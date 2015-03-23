@@ -32,4 +32,6 @@
 *.swp
 *.swo
 
-
+# Directories
+/.settings/
+/Debug/
