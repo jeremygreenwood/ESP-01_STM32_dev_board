@@ -24,4 +24,16 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 		<nature>org.eclipse.cdt.core.ccnature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>include/USART_Print.h</name>
+			<type>1</type>
+			<location>C:/stm32_toolchain/workspace/ESP-01_STM32_dev_board/include/USART_Print.h</location>
+		</link>
+		<link>
+			<name>src/USART_Print.c</name>
+			<type>1</type>
+			<location>C:/stm32_toolchain/workspace/ESP-01_STM32_dev_board/src/USART_Print.c</location>
+		</link>
+	</linkedResources>
 </projectDescription>

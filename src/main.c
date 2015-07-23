@@ -10,6 +10,7 @@
 
 #include "Timer.h"
 #include "BlinkLed.h"
+#include "USART_Print.h"
 
 // ----------------------------------------------------------------------------
 //
@@ -46,7 +47,7 @@
 
 // ----- Timing definitions -------------------------------------------------
 
-#define LED_ON_PERCENT	50			/* LED blink percentage 		*/
+#define LED_ON_PERCENT	10			/* LED blink percentage 		*/
 
 #define BLINK_ON_TICKS  (TIMER_FREQUENCY_HZ * LED_ON_PERCENT / 100)
 #define BLINK_OFF_TICKS (TIMER_FREQUENCY_HZ - BLINK_ON_TICKS)
@@ -69,39 +70,49 @@ main(int argc, char* argv[])
   // trace_dump_args(argc, argv);
 
   // Send a greeting to the trace device (skipped on Release).
-  trace_puts("Hello ARM World!");
+//  trace_puts("Hello ARM World!");
 
   // The standard output and the standard error should be forwarded to
   // the trace device. For this to work, a redirection in _write.c is
   // required.
-  puts("Standard output message.");
-  fprintf(stderr, "Standard error message.\n");
+//  puts("Standard output message.");
+//  fprintf(stderr, "Standard error message.\n");
 
   // At this stage the system clock should have already been configured
   // at high speed.
-  trace_printf("System clock: %uHz\n", SystemCoreClock);
+//  trace_printf("System clock: %uHz\n", SystemCoreClock);
 
   timer_start();
 
   blink_led_init();
+
+  USART_Print();
   
   uint32_t seconds = 0;
 
-  // Infinite loop
-  while (1)
-    {
-      blink_led_on();
-      timer_sleep(BLINK_ON_TICKS);
+	// Infinite loop
+	while (1)
+		{
 
-      blink_led_off();
-      timer_sleep(BLINK_OFF_TICKS);
+//		if( USART_GetFlagStatus( USART1, USART_FLAG_RXNE ) == SET )
+//			{
+//			blink_led_on();
+//
+//			while( 1 );
+//			}
 
-      ++seconds;
 
-      // Count seconds on the trace device.
-      trace_printf("Second %u\n", seconds);
-    }
-  // Infinite loop, never return.
+		blink_led_on();
+		timer_sleep(BLINK_ON_TICKS);
+
+		blink_led_off();
+		timer_sleep(BLINK_OFF_TICKS);
+
+		++seconds;
+
+		// Count seconds on the trace device.
+		//      trace_printf("Second %u\n", seconds);
+		}
 }
 
 #pragma GCC diagnostic pop
