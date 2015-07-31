@@ -15,6 +15,7 @@
     Defines
 **************************************************/
 #define cnt_of_array(ary)          (sizeof(ary) / sizeof(ary[0]))
+#define BUF_SIZE 512
 
 /**************************************************
     Types
@@ -34,20 +35,23 @@ void help(void *in);
 void user_input(void *in);
 void open_port(void *in);
 void close_port(void *in);
+void port_input(void *in);
 
 /**************************************************
     Globals etc
 **************************************************/
 fd_set fds;
+fd_set fds_new;
 int    maxfd;
 int    check_port;
-volatile done;
+volatile int done;
 cmd_list_type cmd_list[] =
 {
 { "Print Help", help },
 { "Send AT cmd", AT },
 { "Open port <port>", open_port },
-{ "CLose port", close_port },
+{ "Close port", close_port },
+{ "Read port", port_input },
 { "Exit", done_cmd }
 };
 
@@ -70,63 +74,33 @@ int in;
 char line[512];
 size_t ln_size;
 done = 0;
-check_port = 0;
-    
+check_port = -1;
+
 /* Setup stdin */
 FD_ZERO(&fds);
+FD_ZERO(&fds_new);
 FD_SET(STDIN_FILENO, &fds);
 maxfd = STDIN_FILENO + 1;  /* maximum bit entry (fd) to test */
           
 help(NULL);
 while( !done )
     {
+
+    fds_new = fds;
     /* block until input becomes available */
-    select(maxfd, &fds, NULL, NULL, NULL);
-    if(FD_ISSET(STDIN_FILENO, &fds))
+    select(maxfd, &fds_new, NULL, NULL, NULL);
+    if(FD_ISSET(STDIN_FILENO, &fds_new))
         {
         user_input(NULL);
         }
-    if(check_port && FD_ISSET(check_port, &fds))
+    if( check_port != -1 
+     && FD_ISSET(check_port, &fds_new))
         {
         printf("Port is set\n");
-        //port_input(NULL);
+        port_input(NULL);
         }
     }
 }
-
-#ifdef NEWPROG
-      #include <sys/time.h>
-      #include <sys/types.h>
-      #include <unistd.h>
-        
-      main()
-      {
-        int    fd1, fd2;  /* input sources 1 and 2 */
-        fd_set readfs;    /* file descriptor set */
-        int    maxfd;     /* maximum file desciptor used */
-        int    loop=1;    /* loop while TRUE */ 
-        
-        /* open_input_source opens a device, sets the port correctly, and
-           returns a file descriptor */
-        fd1 = open_input_source("/dev/ttyS1");   /* COM2 */
-        if (fd1<0) exit(0);
-        fd2 = open_input_source("/dev/ttyS2");   /* COM3 */
-        if (fd2<0) exit(0);
-        maxfd = MAX (fd1, fd2)+1;  /* maximum bit entry (fd) to test */
-        
-        /* loop for input */
-        while (loop) {
-          FD_SET(fd1, &readfs);  /* set testing for source 1 */
-          FD_SET(fd2, &readfs);  /* set testing for source 2 */
-          /* block until input becomes available */
-          select(maxfd, &readfs, NULL, NULL, NULL);
-          if (FD_ISSET(fd1))         /* input from source 1 available */
-            handle_input_from_source1();
-          if (FD_ISSET(fd2))         /* input from source 2 available */
-            handle_input_from_source2();
-        }
-      }   
-#endif
 
 
 /**************************************************
@@ -137,18 +111,19 @@ void user_input
     void *in
     )
 {
-int i;
-char *input = readline(NULL);
+int i, read_num;
+char input[BUF_SIZE];
+char *endptr;
 
-i = atoi(strtok( input, " " ));
-//i = atoi(input);
-if( i >= 0 && i < cnt_of_array(cmd_list) )
+memset( input, 0, BUF_SIZE );
+read_num = read( 0, input, BUF_SIZE);
+i = strtol(strtok( input, " "), &endptr, 10);
+// printf("Input Num: %d\n", i);
+if( endptr != input
+ && i >= 0 
+ && i < cnt_of_array(cmd_list) )
     {
     cmd_list[i].cmd((void*)input);
-    }
-else
-    {
-    help(NULL);
     }
 }
 
@@ -163,7 +138,6 @@ void AT
 printf("Sending AT\n");
 }
 
-
 /**************************************************
     open_port
 **************************************************/
@@ -175,11 +149,12 @@ void open_port
 char *port_in;
 char p[] = "/dev/random";
 
-// port_in = strtok( NULL, " ");
 port_in = p;
+check_port = open(port_in, O_RDWR | O_NOCTTY | O_NONBLOCK);
+printf("Opened Port: %s, num: %d\n", port_in, check_port);
 
-printf("Opening Port: %s\n", port_in);
-check_port = open(port_in, O_RDONLY ); // WR | O_NOCTTY ); // | O_NONBLOCK);
+FD_SET(check_port, &fds);
+maxfd = check_port;
 }
 
 /**************************************************
@@ -190,11 +165,34 @@ void close_port
     void *in
     )
 {
-if(check_port)
+if( check_port != -1 )
     {
+    printf("Closing port\n");
     close(check_port);
-    check_port = 0;
+    check_port = -1;
+    maxfd = STDIN_FILENO + 1;
     }
+else
+    {
+    printf("Port is not open\n");
+    }
+}
+
+/**************************************************
+    port_input
+**************************************************/
+void port_input
+    (
+    void *in
+    )
+{
+int i, read_num;
+char input[BUF_SIZE];
+
+memset( input, 0, BUF_SIZE );
+read_num = read( check_port, input, BUF_SIZE);
+printf("Input[%d]: %s (0X%02x 0X%02x)\n", read_num, input, input[0], input[1]);
+
 }
 
 /**************************************************
@@ -225,6 +223,4 @@ for( i = 0; i < cnt_of_array(cmd_list); i++ )
     printf("%d - %s\n", i, cmd_list[i]);
     }
 }
-
-
 
