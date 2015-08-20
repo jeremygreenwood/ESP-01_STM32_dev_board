@@ -7,9 +7,9 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <errno.h>
 
+#include "esp-at.h"
 
 /**************************************************
     Defines
@@ -36,6 +36,7 @@ void user_input(void *in);
 void open_port(void *in);
 void close_port(void *in);
 void port_input(void *in);
+void reset(void *in);
 
 /**************************************************
     Globals etc
@@ -48,16 +49,18 @@ volatile int done;
 cmd_list_type cmd_list[] =
 {
 { "Print Help", help },
-{ "Send AT cmd", AT },
 { "Open port <port>", open_port },
 { "Close port", close_port },
 { "Read port", port_input },
+{ "Send AT cmd", AT },
+{ "Send reset cmd", reset },
 { "Exit", done_cmd }
 };
 
-//alt j m 
+// alt j m 
 // 'AT/x0D/x0A'
-
+// followed by control-m and control-j, yes both carriage return and 
+// use stty -F /dev/ttyUSB0 115200, to set up the baud rate
 
 /**************************************************
     main
@@ -73,8 +76,13 @@ int main
 int in;
 char line[512];
 size_t ln_size;
+struct timeval tv;
+
+
 done = 0;
 check_port = -1;
+tv.tv_usec = 0;
+tv.tv_sec = 1;
 
 /* Setup stdin */
 FD_ZERO(&fds);
@@ -88,15 +96,13 @@ while( !done )
 
     fds_new = fds;
     /* block until input becomes available */
-    select(maxfd, &fds_new, NULL, NULL, NULL);
+    select(maxfd, &fds_new, NULL, NULL, &tv);
     if(FD_ISSET(STDIN_FILENO, &fds_new))
         {
         user_input(NULL);
         }
-    if( check_port != -1 
-     && FD_ISSET(check_port, &fds_new))
+    if( check_port != -1 )
         {
-        printf("Port is set\n");
         port_input(NULL);
         }
     }
@@ -123,19 +129,9 @@ if( endptr != input
  && i >= 0 
  && i < cnt_of_array(cmd_list) )
     {
+    printf("CMD(%s): ", cmd_list[i].info);
     cmd_list[i].cmd((void*)input);
     }
-}
-
-/**************************************************
-    AT
-**************************************************/
-void AT
-    (
-    void *in
-    )
-{
-printf("Sending AT\n");
 }
 
 /**************************************************
@@ -147,11 +143,14 @@ void open_port
     )
 {
 char *port_in;
-char p[] = "/dev/random";
+char p[] = "/dev/ttyUSB0";
 
 port_in = p;
+errno = 0;
+//check_port = open(port_in, O_RDWR );
+// check_port = open(port_in, O_RDWR | O_NONBLOCK );
 check_port = open(port_in, O_RDWR | O_NOCTTY | O_NONBLOCK);
-printf("Opened Port: %s, num: %d\n", port_in, check_port);
+printf("Opened Port: %s, num: %d, errno: %s\n", port_in, check_port, strerror(errno));
 
 FD_SET(check_port, &fds);
 maxfd = check_port;
@@ -186,13 +185,23 @@ void port_input
     void *in
     )
 {
-int i, read_num;
+int read_num;
 char input[BUF_SIZE];
+int cnt;
 
+cnt = 10;
+
+// printf("reading. check_port: %d", check_port );
 memset( input, 0, BUF_SIZE );
+errno = 0;
 read_num = read( check_port, input, BUF_SIZE);
-printf("Input[%d]: %s (0X%02x 0X%02x)\n", read_num, input, input[0], input[1]);
-
+while( read_num > 2 && cnt > 0 )
+    {
+    //printf("reading, cnt: %d...", cnt );
+    printf("Input[%d]: %s (0X%02x 0X%02x), errno: %s\n", read_num, input, input[0], input[1], strerror(errno));
+    read_num = read( check_port, input, BUF_SIZE);
+    cnt--;
+    }
 }
 
 /**************************************************
@@ -220,7 +229,48 @@ int i;
 printf("--- Help Info ---\n");
 for( i = 0; i < cnt_of_array(cmd_list); i++ )
     {
-    printf("%d - %s\n", i, cmd_list[i]);
+    printf("%d - %s\n", i, cmd_list[i].info);
     }
+}
+
+/**************************************************
+    AT
+**************************************************/
+void AT
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+i = 0;
+memcpy( &buf[i], "AT", sizeof("AT"));
+i += sizeof(RST);
+memcpy( &buf[i], END, sizeof(END));
+i += sizeof(END);
+printf("Sending AT\n");
+write( check_port, buf, i);
+}
+
+
+/**************************************************
+   reset
+**************************************************/
+void reset
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+i = 0;
+memcpy( &buf[i], RST, sizeof(RST));
+i += sizeof(RST);
+memcpy( &buf[i], END, sizeof(END));
+i += sizeof(END);
+
+printf("reset\n");
+write( check_port, buf, i);
+
 }
 

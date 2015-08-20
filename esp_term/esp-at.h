@@ -1,16 +1,20 @@
 
 
+/* Line End */
+//unsigned char   END = "\r\n"
+unsigned char   END[] = { 0x0D, 0x0A };
 
 /* Basic    */
 #define RST "AT+RST"        /*  DES:    restart the module          */
 
 /* WIFI     */
-#define   "AT+CWMODE"       /*  DES:    wifi mode
+#define MODE  "AT+CWMODE"       /*  DES:    wifi mode
                                 SET:    AT+CWMODE=<mode>
                                 INQ:    AT+CWMODE?
                                 TST:    AT+CWMODE=?
                                 PAR:    1= Sta, 2= AP, 3=both
                                 EXP:    -                           */
+#ifdef PK_
 #define   "AT+CWJAP"        /*  DES:    join the AP
                                 SET:    AT+ CWJAP =<ssid>,< pwd >
                                 INQ:    AT+ CWJAP?
@@ -65,3 +69,8 @@
                                 EXP:    turn on as a TCP server: AT+CIPSERVER=1,8888
                                         check the self server IP address: AT+CIFSR=?    */
 #define    "+IPD"           /*  DES:    received data   */
+
+
+#endif
+
+
