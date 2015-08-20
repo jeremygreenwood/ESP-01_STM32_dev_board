@@ -8,11 +8,9 @@
 #include <stdio.h>
 
 
-/***************************************************************************//**
- * Declare function prototypes
- ******************************************************************************/
-void USART_Print(void);
-void SetupClock(void);
-void SetupUSART(void);
+void uart_clock_setup( void );
+void uart_init( void );
+void uart_setup( void );
+void uart_test( void );
 
 #endif
