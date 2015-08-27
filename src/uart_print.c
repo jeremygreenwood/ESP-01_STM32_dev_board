@@ -82,18 +82,56 @@ void uart_setup()
 
 void uart_test( void )
 {
-    uart_init();
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    char                hello_str[] = "Hello, World!";
 
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET ); // Wait for Empty
-    USART_SendData( USART1, 'H' );
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET ); // Wait for Empty
-    USART_SendData( USART1, 'i' );
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET ); // Wait for Empty
-    USART_SendData( USART1, '\n' );
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET ); // Wait for Empty
-    USART_SendData( USART1, '\r' );
-
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET ); // Wait for Empty
-    /* Output a message on Hyperterminal using printf function */
-    puts( "Hello, World!\n\r" );
+    /*--------------------------------------------------------
+    Write a test message
+    --------------------------------------------------------*/
+    uart_write_msg( hello_str, sizeof( hello_str ) );
 }
+
+
+void uart_write_char( char ch )
+{
+    /*--------------------------------------------------------
+    Wait for UART transmit to become ready
+    --------------------------------------------------------*/
+    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
+
+    /*--------------------------------------------------------
+    Send character out UART
+    --------------------------------------------------------*/
+    USART_SendData( USART1, ch );
+}
+
+
+void uart_write_msg( char *msg, uint16_t count )
+{
+    uart_write_str( msg, count );
+    uart_write_char( '\n' );
+    uart_write_char( '\r' );
+}
+
+
+void uart_write_str( char *str, uint16_t count )
+{
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    uint16_t            i;          /* loop counter                 */
+
+    /*--------------------------------------------------------
+    Loop over all characters in the string
+    --------------------------------------------------------*/
+    for( i = 0; i < count; i++ )
+    {
+        /*--------------------------------------------------------
+        Write the character out the UART
+        --------------------------------------------------------*/
+        uart_write_char( str[ i ] );
+    }
+}
+
