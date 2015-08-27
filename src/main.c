@@ -1,10 +1,16 @@
-#include <stdio.h>
-#include "diag/Trace.h"
+/*----------------------------------------------------------------------
+                            INCLUDES
+----------------------------------------------------------------------*/
 
-#include "Timer.h"
+#include <stdio.h>
+
+#include "timer.h"
 #include "led.h"
 #include "uart_print.h"
 
+/*----------------------------------------------------------------------
+                            CONSTANTS
+----------------------------------------------------------------------*/
 
 #define LED_ON_PERCENT	10			/* LED blink percentage 		*/
 #define BLINK_ON_TICKS  ( TIMER_FREQUENCY_HZ * LED_ON_PERCENT / 100 )
@@ -12,16 +18,24 @@
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
+/*----------------------------------------------------------------------
+                            PROCEDURES
+----------------------------------------------------------------------*/
+
 
 int main( int argc, char* argv[] )
 {
-    /* initialization */
+    /*--------------------------------------------------------
+    Initialization
+    --------------------------------------------------------*/
     timer_start();
     led_init();
     uart_init();
     uart_test();
 
-    /* main loop */
+    /*--------------------------------------------------------
+    Forever loop
+    --------------------------------------------------------*/
 	while( 1 )
     {
 		blink_led_on();
