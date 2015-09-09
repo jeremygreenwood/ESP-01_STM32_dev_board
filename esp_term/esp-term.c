@@ -37,6 +37,7 @@ void open_port(void *in);
 void close_port(void *in);
 void port_input(void *in);
 void reset(void *in);
+void mode_inquiry(void *in);
 
 /**************************************************
     Globals etc
@@ -54,6 +55,7 @@ cmd_list_type cmd_list[] =
 { "Read port", port_input },
 { "Send AT cmd", AT },
 { "Send reset cmd", reset },
+{ "Mode Inquiry", mode_inquiry },
 { "Exit", done_cmd }
 };
 
@@ -95,7 +97,9 @@ while( !done )
     {
 
     fds_new = fds;
-    /* block until input becomes available */
+    /* Use the select as delay in reading the port */
+    tv.tv_usec = 0;
+    tv.tv_sec = 1;
     select(maxfd, &fds_new, NULL, NULL, &tv);
     if(FD_ISSET(STDIN_FILENO, &fds_new))
         {
@@ -144,16 +148,49 @@ void open_port
 {
 char *port_in;
 char p[] = "/dev/ttyUSB0";
+struct termios options;
 
 port_in = p;
 errno = 0;
-//check_port = open(port_in, O_RDWR );
-// check_port = open(port_in, O_RDWR | O_NONBLOCK );
 check_port = open(port_in, O_RDWR | O_NOCTTY | O_NONBLOCK);
 printf("Opened Port: %s, num: %d, errno: %s\n", port_in, check_port, strerror(errno));
+if( check_port < 0 )
+    {
+    printf("Problem opening port\n");
+    return;
+    }
 
+//setting baud rates and stuff
+tcgetattr(check_port, &options); 
+cfsetispeed(&options, B115200);
+cfsetospeed(&options, B115200);
+options.c_cflag |= (CLOCAL | CREAD);
+options.c_cflag &= ~PARENB;//next 4 lines setting 8N1
+options.c_cflag &= ~CSTOPB;
+options.c_cflag &= ~CSIZE;
+options.c_cflag |= CS8;
+
+options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP
+                           | INLCR | IGNCR | ICRNL | IXON);
+options.c_oflag &= ~OPOST;
+options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+options.c_cflag &= ~(CSIZE | PARENB);
+options.c_cflag |= CS8;
+
+cfmakeraw(&options);
+tcsetattr(check_port, TCSANOW, &options);
+//tcsetattr(check_port, TCSAFLUSH, &options);
+
+//options.c_cflag &= ~CNEW_RTSCTS;
+//options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG); //raw input
+//options.c_iflag &= ~(IXON | IXOFF | IXANY); //disable software flow control
+
+sleep(2); //required to make flush work, for some reason
+tcflush(check_port,TCIOFLUSH);
 FD_SET(check_port, &fds);
 maxfd = check_port;
+printf("Exit open_port\n");
+
 }
 
 /**************************************************
@@ -189,16 +226,20 @@ int read_num;
 char input[BUF_SIZE];
 int cnt;
 
-cnt = 10;
-
-// printf("reading. check_port: %d", check_port );
+cnt = 1;
 memset( input, 0, BUF_SIZE );
 errno = 0;
+//    printf("About to read from port...\n");
 read_num = read( check_port, input, BUF_SIZE);
-while( read_num > 2 && cnt > 0 )
+//    printf("Done read from port...\n");
+//if(read_num < 0)
+//    {
+//    printf("Error: %d  %s\n", errno, strerror(errno) ); 
+//    }
+while( read_num > 1 && cnt > 0 )
     {
     //printf("reading, cnt: %d...", cnt );
-    printf("Input[%d]: %s (0X%02x 0X%02x), errno: %s\n", read_num, input, input[0], input[1], strerror(errno));
+    printf("Port_In[%d]: %s\n", read_num, input);
     read_num = read( check_port, input, BUF_SIZE);
     cnt--;
     }
@@ -245,10 +286,10 @@ int i;
 char buf[BUF_SIZE];
 i = 0;
 memcpy( &buf[i], "AT", sizeof("AT"));
-i += sizeof(RST);
-memcpy( &buf[i], END, sizeof(END));
-i += sizeof(END);
-printf("Sending AT\n");
+i += sizeof("AT");
+//memcpy( &buf[i], END, sizeof(END));
+// i += sizeof(END);
+// printf("Sending AT\n");
 write( check_port, buf, i);
 }
 
@@ -263,6 +304,10 @@ void reset
 {
 int i;
 char buf[BUF_SIZE];
+
+// "AT+RST" + 0x0D 0x0A
+unsigned char cmd[] = { 0x41, 0x54, 0x2B, 0x52, 0x53, 0x54, 0x0D, 0x0A };
+
 i = 0;
 memcpy( &buf[i], RST, sizeof(RST));
 i += sizeof(RST);
@@ -270,7 +315,30 @@ memcpy( &buf[i], END, sizeof(END));
 i += sizeof(END);
 
 printf("reset\n");
-write( check_port, buf, i);
+//write( check_port, buf, i);
+write( check_port, cmd, sizeof(cmd));
 
 }
+
+
+/**************************************************
+   mode_inquiry
+**************************************************/
+void mode_inquiry
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+// "AT+CWMODE?" + 0x0D 0x0A
+unsigned char cmd[] = { 0x41, 0x54, 0x2B, 0x43, 0x57, 0x4D, 0x4F, 0x44, 0x45, 0x3F, 0x0D, 0x0A }; 
+
+printf("mode_inquiry\n");
+write( check_port, cmd, sizeof(cmd));
+
+}
+
+
 
