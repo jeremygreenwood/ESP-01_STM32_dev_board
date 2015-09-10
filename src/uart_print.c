@@ -1,7 +1,15 @@
+/*----------------------------------------------------------------------
+                            INCLUDES
+----------------------------------------------------------------------*/
+
+#include <string.h>
 #include "uart_print.h"
 
 
-void uart_clock_setup()
+/*--------------------------------------------------------
+Setup processor clocks to use UART 1
+--------------------------------------------------------*/
+void uart_clock_setup( void )
 {
     RCC_DeInit(); /* RCC system reset(for debug purpose)*/
     RCC_HSEConfig( RCC_HSE_ON ); /* Enable HSE                         */
@@ -30,14 +38,22 @@ void uart_clock_setup()
 }
 
 
-void uart_init()
+/*--------------------------------------------------------
+Initialize UART 1
+--------------------------------------------------------*/
+void uart_init( void )
 {
     uart_clock_setup();
     uart_setup();
 }
 
 
-void uart_setup()
+/*--------------------------------------------------------
+Configure buad rate, etc and setup GPIO for UART 1
+
+TODO update to take baud rate parameter
+--------------------------------------------------------*/
+void uart_setup( void )
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     USART_InitTypeDef USART_InitStructure;
@@ -80,6 +96,9 @@ void uart_setup()
 }
 
 
+/*--------------------------------------------------------
+Test UART 1 by writing out a hello world message
+--------------------------------------------------------*/
 void uart_test( void )
 {
     /*--------------------------------------------------------
@@ -90,33 +109,14 @@ void uart_test( void )
     /*--------------------------------------------------------
     Write a test message
     --------------------------------------------------------*/
-    uart_write_msg( hello_str, sizeof( hello_str ) );
+    uart_write_msg( hello_str );
 }
 
 
-void uart_write_char( char ch )
-{
-    /*--------------------------------------------------------
-    Wait for UART transmit to become ready
-    --------------------------------------------------------*/
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
-
-    /*--------------------------------------------------------
-    Send character out UART
-    --------------------------------------------------------*/
-    USART_SendData( USART1, ch );
-}
-
-
-void uart_write_msg( char *msg, uint16_t count )
-{
-    uart_write_str( msg, count );
-    uart_write_char( '\n' );
-    uart_write_char( '\r' );
-}
-
-
-void uart_write_str( char *str, uint16_t count )
+/*--------------------------------------------------------
+Write buffer data out UART 1
+--------------------------------------------------------*/
+void uart_write_buf( char *buf, uint16_t num_bytes )
 {
     /*--------------------------------------------------------
     Local variables
@@ -124,14 +124,53 @@ void uart_write_str( char *str, uint16_t count )
     uint16_t            i;          /* loop counter                 */
 
     /*--------------------------------------------------------
-    Loop over all characters in the string
+    Loop over all bytes in the buffer
     --------------------------------------------------------*/
-    for( i = 0; i < count; i++ )
+    for( i = 0; i < num_bytes; i++ )
     {
         /*--------------------------------------------------------
-        Write the character out the UART
+        Write the byte out the UART
         --------------------------------------------------------*/
-        uart_write_char( str[ i ] );
+        uart_write_byte( buf[ i ] );
     }
+}
+
+
+/*--------------------------------------------------------
+Write a single byte out UART 1
+--------------------------------------------------------*/
+void uart_write_byte( uint8_t byte )
+{
+    /*--------------------------------------------------------
+    Wait for UART transmit to become ready
+    --------------------------------------------------------*/
+    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
+
+    /*--------------------------------------------------------
+    Send byte out UART
+    --------------------------------------------------------*/
+    USART_SendData( USART1, byte );
+}
+
+
+/*--------------------------------------------------------
+Write string message out UART 1 with windows line endings.
+The string must be null terminated.
+--------------------------------------------------------*/
+void uart_write_msg( char *msg )
+{
+    uart_write_str( msg );
+    uart_write_byte( '\n' );
+    uart_write_byte( '\r' );
+}
+
+
+/*--------------------------------------------------------
+Write string out UART 1. The string must be null
+terminated.
+--------------------------------------------------------*/
+void uart_write_str( char *str )
+{
+    uart_write_buf( str, strlen( str ) );
 }
 

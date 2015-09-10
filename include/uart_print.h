@@ -12,8 +12,9 @@ void uart_clock_setup( void );
 void uart_init( void );
 void uart_setup( void );
 void uart_test( void );
-void uart_write_char( char ch );
-void uart_write_msg( char *msg, uint16_t count );
-void uart_write_str( char *str, uint16_t count );
+void uart_write_buf( char *buf, uint16_t count );
+void uart_write_byte( uint8_t byte );
+void uart_write_msg( char *msg );
+void uart_write_str( char *str );
 
 #endif

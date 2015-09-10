@@ -3,6 +3,7 @@
 ----------------------------------------------------------------------*/
 
 #include <stdio.h>
+#include <string.h>
 
 #include "timer.h"
 #include "led.h"
@@ -12,7 +13,7 @@
                             CONSTANTS
 ----------------------------------------------------------------------*/
 
-#define LED_ON_PERCENT	10			/* LED blink percentage 		*/
+#define LED_ON_PERCENT	50			/* LED blink percentage 		*/
 #define BLINK_ON_TICKS  ( TIMER_FREQUENCY_HZ * LED_ON_PERCENT / 100 )
 #define BLINK_OFF_TICKS ( TIMER_FREQUENCY_HZ - BLINK_ON_TICKS )
 
@@ -26,8 +27,16 @@
 int main( int argc, char* argv[] )
 {
     /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    uint16_t            count;      /* seconds counter              */
+    char                cnt_str[ 20 ];
+                                    /* temporary count string       */
+
+    /*--------------------------------------------------------
     Initialization
     --------------------------------------------------------*/
+    count = 0;
     timer_start();
     led_init();
     uart_init();
@@ -43,6 +52,11 @@ int main( int argc, char* argv[] )
 
 		blink_led_off();
         timer_sleep( BLINK_OFF_TICKS );
+
+        sprintf( cnt_str, "%d", count );
+        uart_write_msg( cnt_str );
+
+        count++;
     }
 }
 
