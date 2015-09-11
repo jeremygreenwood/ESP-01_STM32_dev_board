@@ -29,7 +29,7 @@ typedef struct
 /**************************************************
     Prototypes
 **************************************************/
-void AT(void *in);
+void at(void *in);
 void done_cmd(void *in);
 void help(void *in);
 void user_input(void *in);
@@ -38,6 +38,14 @@ void close_port(void *in);
 void port_input(void *in);
 void reset(void *in);
 void mode_inquiry(void *in);
+void mode_set(void *in);
+void mux_set(void *in);
+void server_set(void *in);
+void send_hi(void *in);
+void get_data(void *in);
+void ap_settings(void *in);
+void get_ip(void *in);
+void get_ip_status(void *in);
 
 /**************************************************
     Globals etc
@@ -47,17 +55,27 @@ fd_set fds_new;
 int    maxfd;
 int    check_port;
 volatile int done;
+int cmd_mode;
 cmd_list_type cmd_list[] =
 {
 { "Print Help", help },
 { "Open port <port>", open_port },
 { "Close port", close_port },
 { "Read port", port_input },
-{ "Send AT cmd", AT },
+{ "Send AT cmds", at },
 { "Send reset cmd", reset },
 { "Mode Inquiry", mode_inquiry },
+{ "Mode Set 3", mode_set },
+{ "CIPMUX Set 1", mux_set },
+{ "Server Set 1:5000", server_set },
+{ "Send HI!!", send_hi },
+{ "Get Data", get_data },
+{ "AP Settings", ap_settings },
+{ "Get IP Address", get_ip },
+{ "Get IP Status", get_ip_status },
 { "Exit", done_cmd }
 };
+
 
 // alt j m 
 // 'AT/x0D/x0A'
@@ -80,8 +98,8 @@ char line[512];
 size_t ln_size;
 struct timeval tv;
 
-
 done = 0;
+cmd_mode = 0;
 check_port = -1;
 tv.tv_usec = 0;
 tv.tv_sec = 1;
@@ -95,9 +113,8 @@ maxfd = STDIN_FILENO + 1;  /* maximum bit entry (fd) to test */
 help(NULL);
 while( !done )
     {
-
     fds_new = fds;
-    /* Use the select as delay in reading the port */
+    /* Use the select as delay in the loop */
     tv.tv_usec = 0;
     tv.tv_sec = 1;
     select(maxfd, &fds_new, NULL, NULL, &tv);
@@ -111,7 +128,6 @@ while( !done )
         }
     }
 }
-
 
 /**************************************************
     user_input
@@ -127,14 +143,77 @@ char *endptr;
 
 memset( input, 0, BUF_SIZE );
 read_num = read( 0, input, BUF_SIZE);
-i = strtol(strtok( input, " "), &endptr, 10);
-// printf("Input Num: %d\n", i);
-if( endptr != input
- && i >= 0 
- && i < cnt_of_array(cmd_list) )
+// printf("Cmd_mode: %d,  Input[%d]: %s\n", cmd_mode, strlen(input), input);
+if(cmd_mode == 1)
     {
-    printf("CMD(%s): ", cmd_list[i].info);
-    cmd_list[i].cmd((void*)input);
+    at(input);
+    }
+else
+    {
+    i = strtol(strtok( input, " "), &endptr, 10);
+    // printf("Input Num: %d\n", i);
+    if( endptr != input
+     && i >= 0 
+     && i < cnt_of_array(cmd_list) )
+        {
+        //printf("CMD(%s): ", cmd_list[i].info);
+        cmd_list[i].cmd((void*)input);
+        }
+    }
+}
+
+/**************************************************
+    at
+**************************************************/
+void at
+    (
+    void *in
+    )
+{
+int i; 
+char *str;
+char send_buf[512];
+int idx;
+
+memset( send_buf, 0, sizeof(send_buf));
+
+if( cmd_mode == 0 )
+    {
+    cmd_mode = 1;
+    return;
+    }
+
+// printf("In[%d]: %s\n", strlen(in), in);
+i = strtol(strtok( in, " "), &str, 10);
+if(i == 0)
+    {
+    printf("--- AT cmds, add params to choice ---\n");
+    for( i = 0; i < cnt_of_array(at_list); i++ )
+        {
+        printf("%d - %s\n", i, at_list[i]);
+        }
+    printf("%d - EXIT\n", i);
+    }
+else if( i == cnt_of_array(at_list))
+    {
+    cmd_mode = 0;
+    help(NULL);
+    }
+else
+    {
+    idx = 0;
+    memmove( &send_buf[idx], at_list[i], strlen(at_list[i]));
+    idx += strlen(at_list[i]);
+    while( str = strtok( NULL, " \n\r"))
+        {
+        //printf( "Adding: -%s-\n", str);
+        memmove( &send_buf[idx], str, strlen(str));
+        idx += strlen(str);
+        }
+    memmove( &send_buf[idx], END, strlen(END));
+    idx += strlen(END);
+    write( check_port, send_buf, idx);
+    printf("send_buf[%d]: -%s-\n", idx, send_buf);
     }
 }
 
@@ -239,7 +318,7 @@ read_num = read( check_port, input, BUF_SIZE);
 while( read_num > 1 && cnt > 0 )
     {
     //printf("reading, cnt: %d...", cnt );
-    printf("Port_In[%d]: %s\n", read_num, input);
+    printf("Port_In[%d]: -%s-\n", read_num, input);
     read_num = read( check_port, input, BUF_SIZE);
     cnt--;
     }
@@ -274,25 +353,6 @@ for( i = 0; i < cnt_of_array(cmd_list); i++ )
     }
 }
 
-/**************************************************
-    AT
-**************************************************/
-void AT
-    (
-    void *in
-    )
-{
-int i;
-char buf[BUF_SIZE];
-i = 0;
-memcpy( &buf[i], "AT", sizeof("AT"));
-i += sizeof("AT");
-//memcpy( &buf[i], END, sizeof(END));
-// i += sizeof(END);
-// printf("Sending AT\n");
-write( check_port, buf, i);
-}
-
 
 /**************************************************
    reset
@@ -305,9 +365,6 @@ void reset
 int i;
 char buf[BUF_SIZE];
 
-// "AT+RST" + 0x0D 0x0A
-unsigned char cmd[] = { 0x41, 0x54, 0x2B, 0x52, 0x53, 0x54, 0x0D, 0x0A };
-
 i = 0;
 memcpy( &buf[i], RST, sizeof(RST));
 i += sizeof(RST);
@@ -316,7 +373,7 @@ i += sizeof(END);
 
 printf("reset\n");
 //write( check_port, buf, i);
-write( check_port, cmd, sizeof(cmd));
+// write( check_port, cmd, sizeof(cmd));
 
 }
 
@@ -332,13 +389,151 @@ void mode_inquiry
 int i;
 char buf[BUF_SIZE];
 
-// "AT+CWMODE?" + 0x0D 0x0A
-unsigned char cmd[] = { 0x41, 0x54, 0x2B, 0x43, 0x57, 0x4D, 0x4F, 0x44, 0x45, 0x3F, 0x0D, 0x0A }; 
-
 printf("mode_inquiry\n");
-write( check_port, cmd, sizeof(cmd));
+write( check_port, MODE, sizeof(MODE)-1);
+write( check_port, Q, sizeof(Q));
+write( check_port, END, sizeof(END));
 
 }
 
 
+/**************************************************
+   mode_set
+**************************************************/
+void mode_set
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, MODE, sizeof(MODE)-1);
+write( check_port, EQ, sizeof(EQ));
+write( check_port, "2", 1);
+write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   ap_settings
+**************************************************/
+void ap_settings
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, CWSAP, sizeof(CWSAP)-1);
+write( check_port, Q, sizeof(Q)-1);
+//write( check_port, EQ, sizeof(EQ));
+//write( check_port, "PK,pk,5,2", sizeof("PK,pk,5,2")-1);
+write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   mux_set
+**************************************************/
+void mux_set
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, CIPMUX, sizeof(CIPMUX)-1);
+write( check_port, EQ, sizeof(EQ));
+write( check_port, "1", 1);
+write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   server_set
+**************************************************/
+void server_set
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, CIPSERVER, sizeof(CIPSERVER)-1);
+write( check_port, EQ, sizeof(EQ));
+write( check_port, "1,5000", 6);
+write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   send_hi
+**************************************************/
+void send_hi
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, CIPSEND, sizeof(CIPSEND)-1);
+write( check_port, EQ, sizeof(EQ));
+write( check_port, "4", 1);
+write( check_port, END, sizeof(END));
+write( check_port, "HI!!", sizeof("HI!!"));
+}
+
+/**************************************************
+   get_data
+**************************************************/
+void get_data
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+write( check_port, IPD, sizeof(IPD)-1);
+// write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   get_ip
+**************************************************/
+void get_ip
+    (
+    void *in
+    )
+{
+int i;
+char buf[BUF_SIZE];
+
+char s[] = "AT+CIPAP?";
+
+write( check_port, s, sizeof(s)-1);
+write( check_port, END, sizeof(END));
+}
+
+/**************************************************
+   get_ip_status
+**************************************************/
+void get_ip_status
+    (
+    void *in
+    )
+{
+char *str;
+
+//printf("In[%u]: %s\n", strlen(in), in);
+
+while( str = strtok( NULL, " "))
+    {
+    printf("In[%u]: %s\n", strlen(str), str);
+    }
+write( check_port, CIPSTATUS, sizeof(CIPSTATUS)-1);
+write( check_port, Q, sizeof(Q)-1);
+write( check_port, END, sizeof(END));
+}
 

@@ -2,9 +2,19 @@
 /* Line End */
 //unsigned char   END = "\r\n"
 unsigned char END[] = { 0x0D, 0x0A };
+unsigned char Q[] = { 0x3F };
+unsigned char EQ[] = { 0x3D };
+
+
 
 /* Basic    */
-#define RST     "AT+RST"    /*  DES:    restart the module          */
+#define RST     "AT+RST"
+#define AT      "AT"
+#define GMR     "AT+GMR"
+#define GSLP    "AT+GSLP"
+#define ATE     "ATE"
+
+
 
 /* WIFI     */
 #define MODE    "AT+CWMODE" /*  DES:    wifi mode
@@ -14,7 +24,6 @@ unsigned char END[] = { 0x0D, 0x0A };
                                 PAR:    1= Sta, 2= AP, 3=both
                                 EXP:    -                           */
 
-#ifdef  PK_
 #define CWJAP   "AT+CWJAP"  /*  DES:    join the AP
                                 SET:    AT+ CWJAP =<ssid>,< pwd >
                                 INQ:    AT+ CWJAP?
@@ -36,6 +45,15 @@ unsigned char END[] = { 0x0D, 0x0A };
                                 TST:    -
                                 PAR:    ssid, pwd, chl = channel, ecn = encryption
                                 EXP:    AT+CWJAP="YOURSSID","helloworld"    */
+
+
+
+#define CWDHCP   "AT+CWDHCP" 
+
+
+
+
+
 
 /* TCP/IP   */
 #define CIPSTATUS  "AT+CIPSTATUS"   /*  DES:    get the connection status
@@ -80,6 +98,48 @@ unsigned char END[] = { 0x0D, 0x0A };
 
 #define IPD        "+IPD"          /*  DES:    received data   */
 
-#endif
 
+
+char *at_list[] =
+{
+"Print Cmds",
+RST,
+AT,
+GMR,
+GSLP,
+ATE,
+MODE,
+CWJAP,
+CWLAP,
+CWQAP,
+CWSAP,
+CWDHCP,
+CIPSTATUS,
+CIPSTART,
+CIPSEND,
+CIPCLOSE,
+CIFSR,
+CIPMUX,
+CIPSERVER,
+IPD
+};
+
+
+
+char resp_hdr[] = 
+"HTTP/1.1 200 OK
+Date: Fri, 31 Dec 1999 23:59:59 GMT
+Content-Type: text/html
+Content-Length: %u\n\n"
+
+char resp_body[] = 
+"
+<html>
+<body>
+<h1>Hello glorious world!</h1>
+(all the things I needed to say)
+</body>
+</html>
+
+"
 
