@@ -44,6 +44,9 @@ int main( int argc, char* argv[] )
     uart_init( UART1_BAUD_RATE );
     uart_test();
 
+    uart_write_msg( "Press any key to continue..." );
+    uart_wait_rx_ready();
+
     /*--------------------------------------------------------
     Forever loop
     --------------------------------------------------------*/

@@ -112,6 +112,34 @@ void uart_test( void )
 
 
 /*--------------------------------------------------------
+Wait for UART 1 receive to have data ready
+--------------------------------------------------------*/
+void uart_wait_rx_ready( void )
+{
+    /*--------------------------------------------------------
+    This blocks indefinitely waiting for the RX data register
+    to have data
+    TODO consider adding a timeout to this while loop
+    --------------------------------------------------------*/
+    while( USART_GetFlagStatus( USART1, USART_FLAG_RXNE ) == RESET );
+}
+
+
+/*--------------------------------------------------------
+Wait for UART 1 transmit to become ready
+--------------------------------------------------------*/
+void uart_wait_tx_ready( void )
+{
+    /*--------------------------------------------------------
+    This blocks indefinitely waiting for the TX data register
+    to become empty
+    TODO consider adding a timeout to this while loop
+    --------------------------------------------------------*/
+    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
+}
+
+
+/*--------------------------------------------------------
 Write buffer data out UART 1
 --------------------------------------------------------*/
 void uart_write_buf( char *buf, uint16_t num_bytes )
@@ -139,10 +167,7 @@ Write a single byte out UART 1
 --------------------------------------------------------*/
 void uart_write_byte( uint8_t byte )
 {
-    /*--------------------------------------------------------
-    Wait for UART transmit to become ready
-    --------------------------------------------------------*/
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
+    uart_wait_tx_ready();
 
     /*--------------------------------------------------------
     Send byte out UART
