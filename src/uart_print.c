@@ -41,19 +41,17 @@ void uart_clock_setup( void )
 /*--------------------------------------------------------
 Initialize UART 1
 --------------------------------------------------------*/
-void uart_init( void )
+void uart_init( uint32_t baud_rate )
 {
     uart_clock_setup();
-    uart_setup();
+    uart_setup( baud_rate );
 }
 
 
 /*--------------------------------------------------------
-Configure buad rate, etc and setup GPIO for UART 1
-
-TODO update to take baud rate parameter
+Configure UART 1 baud rate, GPIO, etc
 --------------------------------------------------------*/
-void uart_setup( void )
+void uart_setup( uint32_t baud_rate )
 {
     GPIO_InitTypeDef GPIO_InitStructure;
     USART_InitTypeDef USART_InitStructure;
@@ -85,7 +83,7 @@ void uart_setup( void )
      - USART LastBit: The clock pulse of the last data bit is not output to
      the SCLK pin
      */
-    USART_InitStructure.USART_BaudRate = 115200;
+    USART_InitStructure.USART_BaudRate = baud_rate;
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
     USART_InitStructure.USART_StopBits = USART_StopBits_1;
     USART_InitStructure.USART_Parity = USART_Parity_No;

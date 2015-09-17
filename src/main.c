@@ -16,6 +16,8 @@
 #define LED_ON_PERCENT	50			/* LED blink percentage 		*/
 #define BLINK_ON_TICKS  ( TIMER_FREQUENCY_HZ * LED_ON_PERCENT / 100 )
 #define BLINK_OFF_TICKS ( TIMER_FREQUENCY_HZ - BLINK_ON_TICKS )
+#define UART1_BAUD_RATE 115200      /* baud rate for UART 1 data    */
+
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -39,7 +41,7 @@ int main( int argc, char* argv[] )
     count = 0;
     timer_start();
     led_init();
-    uart_init();
+    uart_init( UART1_BAUD_RATE );
     uart_test();
 
     /*--------------------------------------------------------
