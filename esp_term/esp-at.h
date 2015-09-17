@@ -17,7 +17,7 @@ unsigned char EQ[] = { 0x3D };
 
 
 /* WIFI     */
-#define MODE    "AT+CWMODE" /*  DES:    wifi mode
+#define CWMODE  "AT+CWMODE" /*  DES:    wifi mode
                                 SET:    AT+CWMODE=<mode>
                                 INQ:    AT+CWMODE?
                                 TST:    AT+CWMODE=?
@@ -127,19 +127,25 @@ IPD
 
 
 char resp_hdr[] = 
-"HTTP/1.1 200 OK
-Date: Fri, 31 Dec 1999 23:59:59 GMT
-Content-Type: text/html
-Content-Length: %u\n\n"
+"HTTP/1.1 200 OK\nDate: Fri, 11 Fri 2015 06:25:59 GMT\nContent-Type: text/html\nContent-Length: %u\n\n";
 
-char resp_body[] = 
-"
-<html>
-<body>
-<h1>Hello glorious world!</h1>
-(all the things I needed to say)
-</body>
-</html>
+char resp_body[] = "<html><body><h1>Hello glorious world!</h1>(all the things I needed to say)</body></html>\n\n";
 
-"
+
+//Link
+
+//+IPD,0,303:GET / HTTP/1.1
+//Host: 192.168.4.1:5000
+//User-Agent: Mozilla/5.0 (X11; Linux armv7l; rv:31.0) Gecko/20100101 Firefox/31.0 Iceweasel/31.6.0
+//Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+//Accept-Language: en-US,en;q=0.5
+//Accept-Encoding: gzip, deflate
+//Connection: keep-alive
+
+
+//OK
+
+
+
+
 
