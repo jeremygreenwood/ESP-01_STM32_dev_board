@@ -7,6 +7,12 @@
 
 
 /*--------------------------------------------------------
+TESTING
+--------------------------------------------------------*/
+volatile char StringLoop[] = "The quick brown fox jumps over the lazy dog\r\n";
+
+
+/*--------------------------------------------------------
 Setup processor clocks to use UART 1
 --------------------------------------------------------*/
 void uart_clock_setup( void )
@@ -44,7 +50,36 @@ Initialize UART 1
 void uart_init( uint32_t baud_rate )
 {
     uart_clock_setup();
+    uart_irq_setup();
     uart_setup( baud_rate );
+}
+
+
+/*--------------------------------------------------------
+Setup UART 1 interrupts
+--------------------------------------------------------*/
+void uart_irq_setup( void )
+{
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    NVIC_InitTypeDef    NVIC_InitStructure;
+
+    /*--------------------------------------------------------
+    Enable UART 1 interrupts
+    --------------------------------------------------------*/
+    USART_ITConfig( USART1, USART_IT_TXE, ENABLE );
+    USART_ITConfig( USART1, USART_IT_RXNE, ENABLE );
+
+    /* Configure the NVIC Preemption Priority Bits */
+    NVIC_PriorityGroupConfig( NVIC_PriorityGroup_0 );
+
+    /* Enable the USART 1 Interrupt */
+    NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init( &NVIC_InitStructure );
 }
 
 
@@ -53,8 +88,11 @@ Configure UART 1 baud rate, GPIO, etc
 --------------------------------------------------------*/
 void uart_setup( uint32_t baud_rate )
 {
-    GPIO_InitTypeDef GPIO_InitStructure;
-    USART_InitTypeDef USART_InitStructure;
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    GPIO_InitTypeDef    GPIO_InitStructure;
+    USART_InitTypeDef   USART_InitStructure;
 
     /* Enable GPIOA clock                                                   */
     RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOA, ENABLE );
@@ -197,3 +235,39 @@ void uart_write_str( char *str )
     uart_write_buf( str, strlen( str ) );
 }
 
+
+/*--------------------------------------------------------
+UART 1 interrupt handler
+--------------------------------------------------------*/
+void USART1_IRQHandler( void )
+{
+    /*--------------------------------------------------------
+    TESTING
+    --------------------------------------------------------*/
+
+    /*--------------------------------------------------------
+    Local static variables
+    --------------------------------------------------------*/
+    static uint16_t     tx_index = 0;
+    static uint16_t     rx_index = 0;
+
+    if( USART_GetITStatus( USART1, USART_IT_TXE ) != RESET ) // Transmit the string in a loop
+    {
+        USART_SendData( USART1, StringLoop[ tx_index++ ] );
+
+        if( tx_index >= ( sizeof(StringLoop) - 1 ) )
+        {
+            tx_index = 0;
+        }
+    }
+
+    if( USART_GetITStatus( USART1, USART_IT_RXNE ) != RESET ) // Received characters modify string
+    {
+        StringLoop[ rx_index++ ] = USART_ReceiveData( USART1 );
+
+        if( rx_index >= ( sizeof(StringLoop) - 1 ) )
+        {
+            rx_index = 0;
+        }
+    }
+}

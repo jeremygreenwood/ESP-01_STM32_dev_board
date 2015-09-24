@@ -10,6 +10,7 @@
 
 void uart_clock_setup( void );
 void uart_init( uint32_t baud_rate );
+void uart_irq_setup( void );
 void uart_setup( uint32_t baud_rate );
 void uart_test( void );
 void uart_wait_rx_ready( void );
