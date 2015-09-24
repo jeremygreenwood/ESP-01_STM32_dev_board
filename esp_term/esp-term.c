@@ -36,8 +36,9 @@ void user_input(void *in);
 void open_port(void *in);
 void close_port(void *in);
 void port_input(void *in);
-void send_hi(void *in);
+void send_over_air(void *in);
 void setup(void *in);
+void send_cmd(char *in);
 
 /**************************************************
     Globals etc
@@ -55,7 +56,8 @@ cmd_list_type cmd_list[] =
 { "Close port", close_port },
 { "Read port", port_input },
 { "Send AT cmds", at },
-{ "Send HI!!", send_hi },
+{ "Send HI!!", send_over_air },
+{ "setup", setup },
 { "Exit", done_cmd }
 };
 
@@ -338,9 +340,9 @@ for( i = 0; i < cnt_of_array(cmd_list); i++ )
 
 
 /**************************************************
-   send_hi
+   send_over_air
 **************************************************/
-void send_hi
+void send_over_air
     (
     void *in
     )
@@ -348,21 +350,15 @@ void send_hi
 int idx;
 char send_buf[BUF_SIZE];
 char data_len[32];
+int size_in;
 
+size_in = strlen(in);
 
-idx = sprintf(send_buf, resp_hdr, sizeof(resp_body));
-idx = sprintf(&send_buf[idx], resp_body);
-//printf(send_buf);
-memset(data_len, 0, sizeof(data_len));
-sprintf( data_len, "1,%d", idx);
+send_cmd(CIPSEND);  
+sprintf(send_buf, "0,%d", size_in);
+send_cmd(send_buf);  
+write( check_port, in, size_in);
 
-write( check_port, CIPSEND, strlen(CIPSEND));
-write( check_port, EQ, sizeof(EQ));
-write( check_port, "0,5", strlen("0,5"));
-write( check_port, END, sizeof(END));
-write( check_port, "hello", 5);
-
-// write( check_port, send_buf, idx);
 }
 
 
@@ -374,38 +370,48 @@ void setup
     void *in
     )
 {
+#define SND_CMD(cmd)        \
+do {                        \
+send_cmd(cmd);              \
+port_input(NULL);           \
+}while(0)
 
+char send_buf[512];
 
-AT,
-RST,
-CWMODE=3 //both
-CWSAP="SSID","password",<channel_id>,<encryption>
-CIPMUX,
-                                
+SND_CMD(AT);
+SND_CMD(RST);
+SND_CMD(CWMODE "=3");
+SND_CMD(CWSAP"=SSID,password,3,0");
+SND_CMD(CIPMUX"=1");
+SND_CMD(CIPSERVER"=1,5000");
+SND_CMD(CIFSR"=?");
 
-
-
-GSLP,
-ATE,
-CWJAP,
-CWLAP,
-CWQAP,
-CWDHCP,
-CIPSTATUS,
-CIPSTART,
-CIPSEND,
-CIPCLOSE,
-CIFSR,
-CIPSERVER,
-IPD
-
-
-
+//SND_CMD(CIPSTATUS);
 
 }
 
 
+/**************************************************
+   send_cmd
+**************************************************/
+void send_cmd
+    (
+    char *in
+    )
+{
+char send_buf[512];
+int idx;
 
+memset(send_buf, 0, 512);
+idx = 0;
+memmove( &send_buf[idx], in, strlen(in));
+idx += strlen(in);
+memmove( &send_buf[idx], END, strlen(END));
+idx += strlen(END);
+write( check_port, send_buf, idx);
+printf("send_buf[%d]: -%s-\n", idx, send_buf);
+
+}
 
 
 
