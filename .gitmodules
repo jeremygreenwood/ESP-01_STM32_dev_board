@@ -1,0 +1,3 @@
+[submodule "esp_term/http-parser"]
+	path = esp_term/http-parser
+	url = https://github.com/joyent/http-parser.git

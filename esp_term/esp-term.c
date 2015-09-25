@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include "http-parser/http_parser.h"
 #include "esp-at.h"
 
 /**************************************************
@@ -41,6 +42,18 @@ void setup(void *in);
 void send_cmd(char *in);
 
 /**************************************************
+    Callback Prototypes
+**************************************************/
+int cb_message_begin(http_parser*);
+int cb_url(http_parser*, const char *at, size_t length);
+int cb_status(http_parser*, const char *at, size_t length);
+int cb_header_field(http_parser*, const char *at, size_t length);
+int cb_header_value(http_parser*, const char *at, size_t length);
+int cb_headers_complete(http_parser*);
+int cb_body(http_parser*, const char *at, size_t length);
+int cb_message_complete(http_parser*);
+
+/**************************************************
     Globals etc
 **************************************************/
 fd_set fds;
@@ -49,6 +62,7 @@ int    maxfd;
 int    check_port;
 volatile int done;
 int cmd_mode;
+http_parser_settings settings;
 cmd_list_type cmd_list[] =
 {
 { "Print Help", help },
@@ -66,6 +80,77 @@ cmd_list_type cmd_list[] =
 // 'AT/x0D/x0A'
 // followed by control-m and control-j, yes both carriage return and 
 // use stty -F /dev/ttyUSB0 115200, to set up the baud rate
+
+
+
+#ifdef HERESOMETHINGS
+typedef int (*http_data_cb) (http_parser*, const char *at, size_t length);
+typedef int (*http_cb) (http_parser*);
+
+struct http_parser_settings {
+  http_cb      on_message_begin;
+  http_data_cb on_url;
+  http_data_cb on_status;
+  http_data_cb on_header_field;
+  http_data_cb on_header_value;
+  http_cb      on_headers_complete;
+  http_data_cb on_body;
+  http_cb      on_message_complete;
+  /* When on_chunk_header is called, the current chunk length is stored
+   * in parser->content_length.
+   */
+  http_cb      on_chunk_header;
+  http_cb      on_chunk_complete;
+};
+
+http_parser_settings settings;
+settings.on_url = my_url_callback;
+settings.on_header_field = my_header_field_callback;
+/* ... */
+
+http_parser *parser = malloc(sizeof(http_parser));
+http_parser_init(parser, HTTP_REQUEST);
+parser->data = my_socket;
+
+When data is received on the socket execute the parser and check for errors.
+
+size_t len = 80*1024, nparsed;
+char buf[len];
+ssize_t recved;
+
+recved = recv(fd, buf, len, 0);
+
+if (recved < 0) {
+  /* Handle error. */
+}
+
+/* Start up / continue the parser.
+ * Note we pass recved==0 to signal that EOF has been received.
+ */
+nparsed = http_parser_execute(parser, &settings, buf, recved);
+
+if (parser->upgrade) {
+  /* handle new protocol */
+} else if (nparsed != recved) {
+  /* Handle error. Usually just close the connection. */
+}
+
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /**************************************************
     main
@@ -204,7 +289,7 @@ else
     memmove( &send_buf[idx], END, strlen(END));
     idx += strlen(END);
     write( check_port, send_buf, idx);
-    printf("send_buf[%d]: -%s-\n", idx, send_buf);
+    //printf("send_buf[%d]: -%s-\n", idx, send_buf);
     }
 }
 
@@ -223,7 +308,7 @@ struct termios options;
 port_in = p;
 errno = 0;
 check_port = open(port_in, O_RDWR | O_NOCTTY | O_NONBLOCK);
-printf("Opened Port: %s, num: %d, errno: %s\n", port_in, check_port, strerror(errno));
+//printf("Opened Port: %s, num: %d, errno: %s\n", port_in, check_port, strerror(errno));
 if( check_port < 0 )
     {
     printf("Problem opening port\n");
@@ -259,7 +344,7 @@ sleep(2); //required to make flush work, for some reason
 tcflush(check_port,TCIOFLUSH);
 FD_SET(check_port, &fds);
 maxfd = check_port;
-printf("Exit open_port\n");
+printf("opened port\n");
 
 }
 
@@ -307,7 +392,8 @@ do  {
 input[total] = '\0';
 if(total > 0)
     {
-    printf("Port_In[%d]: -%s-\n", total, input);
+    printf("Port_In[%d]: ---%s---\n", total, input);
+    esp_at_input(input, total, esp_at_state);
     }
 }
 
@@ -387,7 +473,7 @@ void setup
 #define SND_CMD(cmd)        \
 do {                        \
 send_cmd(cmd);              \
-sleep(1);                   \
+sleep(3);                   \
 port_input(NULL);           \
 }while(0)
 
@@ -424,9 +510,31 @@ idx += strlen(in);
 memmove( &send_buf[idx], END, strlen(END));
 idx += strlen(END);
 write( check_port, send_buf, idx);
-printf("send_buf[%d]: -%s-\n", idx, send_buf);
+//printf("send_buf[%d]: -%s-\n", idx, send_buf);
 
 }
 
+
+/**************************************************
+   Callbacks
+int cb_url(http_parser*, const char *at, size_t length);
+int cb_status(http_parser*, const char *at, size_t length);
+int cb_header_field(http_parser*, const char *at, size_t length);
+int cb_header_value(http_parser*, const char *at, size_t length);
+int cb_body(http_parser*, const char *at, size_t length);
+
+int cb_message_complete(http_parser*);
+int cb_message_begin(http_parser*);
+int cb_headers_complete(http_parser*);
+**************************************************/
+
+
+
+/**************************************************
+    esp_at_input
+**************************************************/
+esp_at_input
+    (
+    char *input, total, esp_at_state)
 
 
