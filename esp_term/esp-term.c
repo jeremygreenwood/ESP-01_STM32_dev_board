@@ -56,7 +56,7 @@ cmd_list_type cmd_list[] =
 { "Close port", close_port },
 { "Read port", port_input },
 { "Send AT cmds", at },
-{ "Send HI!!", send_over_air },
+{ "Send over air", send_over_air },
 { "setup", setup },
 { "Exit", done_cmd }
 };
@@ -124,10 +124,12 @@ void user_input
 {
 int i, read_num;
 char input[BUF_SIZE];
+char input_2[BUF_SIZE];
 char *endptr;
 
 memset( input, 0, BUF_SIZE );
 read_num = read( 0, input, BUF_SIZE);
+memmove(input_2, input, BUF_SIZE);
 // printf("Cmd_mode: %d,  Input[%d]: %s\n", cmd_mode, strlen(input), input);
 if(cmd_mode == 1)
     {
@@ -142,7 +144,7 @@ else
      && i < cnt_of_array(cmd_list) )
         {
         //printf("CMD(%s): ", cmd_list[i].info);
-        cmd_list[i].cmd((void*)input);
+        cmd_list[i].cmd((void*)input_2);
         }
     else
         {
@@ -350,14 +352,26 @@ void send_over_air
 int idx;
 char send_buf[BUF_SIZE];
 char data_len[32];
-int size_in;
+int size;
+int id;
+int i;
+char *str;
 
-size_in = strlen(in);
+//printf("IN send_over_air: [%d] %s\n", strlen(in),in);
+char resp[] = 
+"HTTP/1.1 200 OK\nDate: Fri, 11 Fri 2015 06:25:59 GMT\nContent-Type: text/html\nContent-Length: %u\n\n<html><body><h1>Hello glorious world!</h1>(all the things I needed to say)</body></html>\n\n";
 
-send_cmd(CIPSEND);  
-sprintf(send_buf, "0,%d", size_in);
-send_cmd(send_buf);  
-write( check_port, in, size_in);
+
+printf("IN send_over_air\n");
+id = strtol(strtok( in, " "), &str, 10);
+id = strtol(strtok( NULL, " "), &str, 10);
+printf("id: %d\n", id);
+
+size = strlen(resp);
+sprintf(send_buf, "%s=%d,%d", CIPSEND, id, size);
+send_cmd(send_buf);
+port_input(NULL);
+write( check_port, resp, size);
 
 }
 
@@ -373,6 +387,7 @@ void setup
 #define SND_CMD(cmd)        \
 do {                        \
 send_cmd(cmd);              \
+sleep(1);                   \
 port_input(NULL);           \
 }while(0)
 
@@ -381,7 +396,7 @@ char send_buf[512];
 SND_CMD(AT);
 SND_CMD(RST);
 SND_CMD(CWMODE "=3");
-SND_CMD(CWSAP"=SSID,password,3,0");
+SND_CMD(CWSAP"=\"SSID\",\"password\",3,1");
 SND_CMD(CIPMUX"=1");
 SND_CMD(CIPSERVER"=1,5000");
 SND_CMD(CIFSR"=?");
