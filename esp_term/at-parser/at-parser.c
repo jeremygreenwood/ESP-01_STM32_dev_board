@@ -1,7 +1,7 @@
 /**************************************************
     Includes
 **************************************************/
-
+at-parser.h
 
 /**************************************************
     Defines
@@ -10,6 +10,36 @@
 /**************************************************
     Types
 **************************************************/
+
+/**************************************************
+    Variables
+**************************************************/
+at_cmd_to_text_type at_cmds[] =
+    {
+/* BASIC    */
+    { AT_CMD_NO_CMD,    "AT_NO_CMD"     },
+    { AT_CMD_RST,       "AT+RST"        },
+    { AT_CMD_AT,        "AT"            },
+    { AT_CMD_GMR,       "AT+GMR"        },
+    { AT_CMD_GSLP,      "AT+GSLP"       },
+    { AT_CMD_ATE,       "ATE"           }
+/* WIFI     */
+    { AT_CMD_CWMODE,    "AT+CWMODE"     },
+    { AT_CMD_CWJAP,     "AT+CWJAP"      },
+    { AT_CMD_CWLAP,     "AT+CWLAP"      },
+    { AT_CMD_CWQAP,     "AT+CWQAP"      },
+    { AT_CMD_CWSAP,     "AT+CWSAP"      },
+    { AT_CMD_CWDHCP,    "AT+CWDHCP"     },
+/* TCP/IP   */
+    { AT_CMD_CIPSTATUS, "AT+CIPSTATUS"  },
+    { AT_CMD_CIPSTART,  "AT+CIPSTART"   },
+    { AT_CMD_CIPSEND,   "AT+CIPSEND"    },
+    { AT_CMD_CIPCLOSE,  "AT+CIPCLOSE"   },
+    { AT_CMD_CIFSR,     "AT+CIFSR"      },
+    { AT_CMD_CIPMUX,    "AT+CIPMUX"     },
+    { AT_CMD_CIPSERVER, "AT+CIPSERVER"  },
+    { AT_CMD_IPD,       "+IPD"          }
+    };
 
 /**************************************************
     Prototypes

@@ -1,6 +1,6 @@
 
 
 ALL:
-	gcc http-parser/http_parser.c esp-term.c -o esp_term.app
+	gcc http-parser/http_parser.c main.c -o esp_term.app
 
 
