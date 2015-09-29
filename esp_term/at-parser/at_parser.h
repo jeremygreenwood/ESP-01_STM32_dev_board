@@ -1,11 +1,16 @@
 /**************************************************
     Includes
 **************************************************/
+#include <stdlib.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <string.h>
+#include <unistd.h>
 
 /**************************************************
     Enums
 **************************************************/
-typedef uint8 at_cmd_enum;
+typedef uint8_t at_cmd_enum;
 enum
     {
     AT_CMD_NO_CMD,
@@ -30,7 +35,7 @@ enum
     AT_CMD_IPD
     };
 
-typedef uint8 at_status_enum;
+typedef uint8_t at_status_enum;
 enum
     {
     AT_STATUS_OK,
@@ -38,7 +43,7 @@ enum
     AT_STATUS_UNKNOWN
     };
 
-typedef uint8 at_cb_standing_enum;
+typedef uint8_t at_cb_standing_enum;
 enum
     {
     AT_CB_STANDING_PERSISTENT,
@@ -55,7 +60,7 @@ enum
 typedef struct 
     {
     at_cmd_enum         cmd;
-    char               *txt
+    char               *txt;
     }at_cmd_to_text_type;
 
 typedef struct 
@@ -65,6 +70,8 @@ typedef struct
     char               *raw;
     int                 raw_size;
     }at_return_type;
+
+typedef int (*at_callback_type) (at_return_type *ret);
 
 typedef struct 
     {
@@ -79,21 +86,22 @@ typedef struct
     int                 req_num;
     }at_parser_state_type;
 
-typedef int (*at_callback_type) (*at_return_type ret);
 
 /**************************************************
     Prototypes
 **************************************************/
 int at_init_parser(at_parser_state_type *p, void *buf, int req_num);
-int at_process(at_parser_state_type *p, void *in, int in_size);
+int at_process(at_parser_state_type *p, char *in, int in_size);
 int at_submit_cb(at_parser_state_type *p, at_cb_request_type *cb);
 int at_remove_cb(at_parser_state_type *p, at_cb_request_type *cb);
+
+void at_send_cmd(char *in, int in_size);
+char *at_get_cmd_txt(at_cmd_enum cmd);
+
 
 /**************************************************
     Variables
 **************************************************/
 extern at_cmd_to_text_type *at_cmds;
-
-
 
 

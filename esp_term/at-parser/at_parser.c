@@ -1,7 +1,7 @@
 /**************************************************
     Includes
 **************************************************/
-at-parser.h
+#include "at_parser.h"
 
 /**************************************************
     Defines
@@ -15,7 +15,7 @@ at-parser.h
 /**************************************************
     Variables
 **************************************************/
-at_cmd_to_text_type at_cmds[] =
+at_cmd_to_text_type _at_cmds[] =
     {
 /* BASIC    */
     { AT_CMD_NO_CMD,    "AT_NO_CMD"     },
@@ -23,7 +23,7 @@ at_cmd_to_text_type at_cmds[] =
     { AT_CMD_AT,        "AT"            },
     { AT_CMD_GMR,       "AT+GMR"        },
     { AT_CMD_GSLP,      "AT+GSLP"       },
-    { AT_CMD_ATE,       "ATE"           }
+    { AT_CMD_ATE,       "ATE"           },
 /* WIFI     */
     { AT_CMD_CWMODE,    "AT+CWMODE"     },
     { AT_CMD_CWJAP,     "AT+CWJAP"      },
@@ -41,6 +41,7 @@ at_cmd_to_text_type at_cmds[] =
     { AT_CMD_CIPSERVER, "AT+CIPSERVER"  },
     { AT_CMD_IPD,       "+IPD"          }
     };
+at_cmd_to_text_type *at_cmds = _at_cmds;
 
 /**************************************************
     Prototypes
@@ -71,7 +72,7 @@ memset( p->requests, 0, p->req_num * sizeof(at_cb_request_type) );
 int at_process
     (
     at_parser_state_type   *p,
-    void                   *in,
+    char                   *in,
     int                     in_size
     )
 {
@@ -82,43 +83,34 @@ char           *err_ptr;
 at_return_type  at_ret;
 int             found;
 
-
-typedef struct 
-    {
-    at_cmd_enum         cmd;
-    at_status_enum      status;
-    char               *raw;
-    int                 raw_size;
-    }at_return_type;
-
 idx = 0;
 do
 {
 found = 0;
 for( i = 0; i < cnt_of_array(at_cmds); i++ )
     {
-    if( strncmp(&p[idx], at_cmds[i].txt, strlen(at_cmds[i].txt)) == 0 )
+    if( strncmp(&in[idx], at_cmds[i].txt, strlen(at_cmds[i].txt)) == 0 )
         {
         at_ret.status = AT_STATUS_UNKNOWN;
-        err_ptr = strstr( &p[idx], "errror");
-        ok_ptr = strstr( &p[idx], "OK");
+        err_ptr = strstr( &in[idx], "errror");
+        ok_ptr = strstr( &in[idx], "OK");
         if(ok_ptr != NULL && err_ptr != NULL)
             {
             at_ret.status = ok_ptr < err_ptr ? AT_STATUS_OK : AT_STATUS_ERR;
-            at_ret.raw_size =  (ok_prt - &p[idx]) + strlen(ok_ptr < err_ptr ? "OK" : "error");
+            at_ret.raw_size =  (ok_ptr - &in[idx]) + strlen(ok_ptr < err_ptr ? "OK" : "error");
             }
         else if(ok_ptr != NULL)
             {
             at_ret.status = ok_ptr < err_ptr ? AT_STATUS_OK : AT_STATUS_ERR;
-            at_ret.raw_size =  (ok_prt - &p[idx]) + strlen("OK");
+            at_ret.raw_size =  (ok_ptr - &in[idx]) + strlen("OK");
             }
         else if(err_ptr != NULL)
             {
             at_ret.status = ok_ptr < err_ptr ? AT_STATUS_OK : AT_STATUS_ERR;
-            at_ret.raw_size =  (ok_prt - &p[idx]) + strlen("error");
+            at_ret.raw_size =  ((int)ok_ptr - (int)&p[idx]) + (int)strlen("error");
             }
-        at_ret.cmd = at_cmds.cmd;
-        at_ret.raw = &p[idx];
+        at_ret.cmd = at_cmds[i].cmd;
+        at_ret.raw = &in[idx];
         idx += at_ret.raw_size;
         found = 1;
         at_call_callback(p, at_ret);
@@ -129,8 +121,7 @@ for( i = 0; i < cnt_of_array(at_cmds); i++ )
         idx += 1;
         }
     }
-while( idx < in_size );
-
+} while( idx < in_size );
 };
 
 /**************************************************
@@ -143,29 +134,23 @@ int at_call_callback
     )
 {
 int             i;
+int             ret;
+int             found;
 
+found = 0;
 for( i = 0; i < p->req_num; i++ )
     {
     if( p->requests[i].cmd == at_ret->cmd )
         {
-        p->requests[i].cb(at_ret);
+        found = 1;
+        ret = p->requests[i].cb(at_ret);
+        if( p->requests[i].standing == AT_CB_STANDING_TRANSIENT )
+            {
+            at_remove_cb( p, &p->requests[i] );
+            }
         }
     }
-
 };
-
-typedef struct 
-    {
-    at_cb_request_type *requests;
-    int                 req_num;
-    }at_parser_state_type;
-
-typedef struct 
-    {
-    at_cmd_enum         cmd;
-    at_callback_type    cb;
-    at_cb_standing_enum standing; 
-    }at_cb_request_type;
 
 /**************************************************
     at_submit_cb
@@ -179,7 +164,7 @@ int at_submit_cb
 int         i;
 int         ret;
 
-int         ret = AT_STATUS_ERR;
+ret = AT_STATUS_ERR;
 for( i = 0; i < p->req_num; i++ )
     {
     if( p->requests[i].cmd == AT_CMD_NO_CMD )
@@ -202,7 +187,7 @@ int at_remove_cb
 int         i;
 int         ret;
 
-int         ret = AT_STATUS_ERR;
+ret = AT_STATUS_ERR;
 for( i = 0; i < p->req_num; i++ )
     {
     if( p->requests[i].cmd == cb->cmd
@@ -214,6 +199,39 @@ for( i = 0; i < p->req_num; i++ )
     }
 };
 
+/**************************************************
+    at_send_cmd
+**************************************************/
+void at_send_cmd
+    (
+    char   *in,
+    int     in_size
+    )
+{
+unsigned char END[] = { 0x0D, 0x0A };
 
+uart_write( in, in_size);
+uart_write( END, 2);
+}
 
+/**************************************************
+    at_get_cmd_txt
+**************************************************/
+char *at_get_cmd_txt
+    (
+    at_cmd_enum     cmd
+    )
+{
+int         i;
+
+for( i = 0; i < cnt_of_array(at_cmds); i++)
+    {
+    if(cmd == at_cmds[i].cmd)
+        {
+        return( at_cmds[i].txt);
+        }
+    }
+return(at_cmds[0].txt);
+
+}
 

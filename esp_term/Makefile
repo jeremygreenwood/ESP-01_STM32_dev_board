@@ -1,6 +1,6 @@
 
 
 ALL:
-	gcc http-parser/http_parser.c main.c -o esp_term.app
+	gcc -Iat-parser -Ihw-specific hw-specific/linux_uart.c at-parser/at_parser.c main.c -o a.app
 
 
