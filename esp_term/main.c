@@ -80,10 +80,9 @@ while( 1 )
     buf_curr += read_ret;
     if( read_ret > 0 )
         {
-        at_processed = at_process(at_parser_state_type *p, main_buf, buf_curr);
-        process_again = in_size - at_processed;
-        memmove(&main_buf[], &main_buf[], 
-        
+        at_processed = at_process(&at_state, main_buf, buf_curr);
+        buf_curr -= at_processed;
+        memmove(main_buf, &main_buf[at_processed], buf_curr );
         }
     }
 }

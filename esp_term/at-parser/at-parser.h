@@ -34,7 +34,8 @@ typedef uint8 at_status_enum;
 enum
     {
     AT_STATUS_OK,
-    AT_STATUS_ERR
+    AT_STATUS_ERR,
+    AT_STATUS_UNKNOWN
     };
 
 typedef uint8 at_cb_standing_enum;
@@ -78,7 +79,7 @@ typedef struct
     int                 req_num;
     }at_parser_state_type;
 
-typedef int (*at_callback_type) (at_return_type ret);
+typedef int (*at_callback_type) (*at_return_type ret);
 
 /**************************************************
     Prototypes
