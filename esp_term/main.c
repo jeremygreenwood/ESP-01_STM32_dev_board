@@ -35,13 +35,15 @@ int cb_at(at_return_type *ret);
 /**************************************************
     main
 **************************************************/
-
 int main
     ( 
     void   *argv, 
     int     argn 
     )
 {
+/*---------------------------------- 
+Local variables
+---------------------------------- */
 static char             main_buf[MAIN_BUF_SIZE];
 static char             at_memory[CB_REQ_NUM * sizeof(at_cb_request_type)];
 at_parser_state_type    at_state;
@@ -53,8 +55,9 @@ int                     buf_curr;
 int                     ret;
 at_cb_request_type      at_cb_req;
 
-
-/* Setup up at-parser */
+/*---------------------------------- 
+Setup up at-parser
+---------------------------------- */
 at_init_parser(&at_state, at_memory, CB_REQ_NUM);
 
 /* Setup uart */
@@ -65,16 +68,24 @@ if( fd < 0 )
     return(-1);
     }
 
-/* Setup callbacks */
+/*---------------------------------- 
+Setup callbacks
+---------------------------------- */
 at_cb_req.cmd = AT_CMD_AT;
 at_cb_req.cb = cb_at;
 at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
 ret = at_submit_cb(&at_state, &at_cb_req);
 
-
+/*---------------------------------- 
+Send first CMD to kick it off
+---------------------------------- */
 buf_curr = 0;
 at_send_cmd(at_get_cmd_txt(AT_CMD_AT), strlen(at_get_cmd_txt(AT_CMD_AT)));
-do
+
+/*---------------------------------- 
+Do main forever
+---------------------------------- */
+for(;;)
     {
     read_ret = uart_read(fd, &main_buf[buf_curr], MAIN_BUF_SIZE - buf_curr);
     printf("uart_read[%d]: %s\n", read_ret, main_buf);
@@ -85,13 +96,12 @@ do
         buf_curr -= at_processed;
         memmove(main_buf, &main_buf[at_processed], buf_curr );
         }
-    } while( 1 ); 
+    }
 }
 
 /**************************************************
-    main
+    cb_at
 **************************************************/
-
 int cb_at
     ( 
     at_return_type   *ret
@@ -99,10 +109,6 @@ int cb_at
 {
 printf("Got cb_at()\ncmd: %d, status: %d, raw[%d]: --%s--\n",
         ret->cmd, ret->status, ret->raw_size, ret->raw); 
-
 }
-
-
-
 
 
