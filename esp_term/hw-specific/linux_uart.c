@@ -36,7 +36,7 @@ printf("Opened Port: %s, num: %d, errno: %s\n", path, fd, strerror(errno));
 if( fd < 0 )
     {
     printf("Problem opening port\n");
-    return;
+    return -1;
     }
 
 //setting baud rates and stuff
@@ -62,7 +62,7 @@ tcsetattr(fd, TCSANOW, &options);
 sleep(2); //required to make flush work, for some reason
 tcflush(fd,TCIOFLUSH);
 printf("opened port\n");
-
+return(0);
 }
 
 /**************************************************
@@ -111,7 +111,7 @@ do  {
 buf[total] = '\0';
 if(total > 0)
     {
-    printf("uart_read[%d]: ---%s---\n", total, buf);
+    // printf("uart_read[%d]: ---%s---\n", total, buf);
     }
 return( total );
 }

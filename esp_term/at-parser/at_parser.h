@@ -90,7 +90,7 @@ typedef struct
 /**************************************************
     Prototypes
 **************************************************/
-int at_init_parser(at_parser_state_type *p, void *buf, int req_num);
+void at_init_parser(at_parser_state_type *p, void *buf, int req_num);
 int at_process(at_parser_state_type *p, char *in, int in_size);
 int at_submit_cb(at_parser_state_type *p, at_cb_request_type *cb);
 int at_remove_cb(at_parser_state_type *p, at_cb_request_type *cb);
