@@ -25,6 +25,7 @@ enum
     AT_CMD_CWQAP,
     AT_CMD_CWSAP,
     AT_CMD_CWDHCP,
+    AT_CMD_CIPAP,
     AT_CMD_CIPSTATUS,
     AT_CMD_CIPSTART,
     AT_CMD_CIPSEND,
@@ -96,6 +97,7 @@ int at_submit_cb(at_parser_state_type *p, at_cb_request_type *cb);
 int at_remove_cb(at_parser_state_type *p, at_cb_request_type *cb);
 
 void at_send_cmd(char *in, int in_size);
+void at_send_cmd_with_text(at_cmd_enum cmd, char *in, int in_size);
 char *at_get_cmd_txt(at_cmd_enum cmd);
 
 

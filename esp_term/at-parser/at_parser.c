@@ -364,6 +364,25 @@ uart_write( (char*)END, 2);
 }
 
 /**************************************************
+    at_send_cmd_with_text
+**************************************************/
+void at_send_cmd_with_text
+    (
+    at_cmd_enum cmd,
+    char   *in,
+    int     in_size
+    )
+{
+unsigned char END[] = { 0x0D, 0x0A };
+char *cmd_text;
+cmd_text = at_get_cmd_txt(cmd);
+
+uart_write(cmd_text, strlen(cmd_text));
+uart_write( in, in_size);
+uart_write( (char*)END, 2);
+}
+
+/**************************************************
     at_get_cmd_txt
 **************************************************/
 char *at_get_cmd_txt
