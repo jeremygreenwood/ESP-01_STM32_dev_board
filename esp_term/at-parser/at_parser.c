@@ -6,13 +6,72 @@
 #include <stdio.h>
 
 /**************************************************
-    Defines
+    Defines & Memory Constants
 **************************************************/
 #define cnt_of_array(ary)          (sizeof(ary) / sizeof(ary[0]))
+
+const char AT_TXT_NO_CMD[]  =   "AT_NO_CMD";
+const char AT_TXT_RST[]     =   "AT+RST";
+const char AT_TXT_AT[]      =   "AT";
+const char AT_TXT_GMR[]     =   "AT+GMR";
+const char AT_TXT_GSLP[]    =   "AT+GSLP";
+const char AT_TXT_ATE[]     =   "ATE";
+const char AT_TXT_CWMODE[]  =   "AT+CWMODE";
+const char AT_TXT_CWJAP[]   =   "AT+CWJAP";
+const char AT_TXT_CWLAP[]   =   "AT+CWLAP";
+const char AT_TXT_CWQAP[]   =   "AT+CWQAP";
+const char AT_TXT_CWSAP[]   =   "AT+CWSAP";
+const char AT_TXT_CWDHCP[]  =   "AT+CWDHCP";
+const char AT_TXT_CIPSTATUS[] = "AT+CIPSTATUS";
+const char AT_TXT_CIPSTA[]  =   "AT+CIPSTA";
+const char AT_TXT_CIPAP[]   =   "AT+CIPAP";
+const char AT_TXT_CIPSTART[] =  "AT+CIPSTART";
+const char AT_TXT_CIPSEND[] =   "AT+CIPSEND";
+const char AT_TXT_CIPCLOSE[] =  "AT+CIPCLOSE";
+const char AT_TXT_CIFSR[]   =   "AT+CIFSR";
+const char AT_TXT_CIPMUX[]  =   "AT+CIPMUX";
+const char AT_TXT_CIPSERVER[] = "AT+CIPSERVER";
+const char AT_TXT_IPD[]     =   "+IPD";
+
+const char AT_TXT_no_this_fun[] =   "no this fun";
+const char AT_TXT_ok[]          =   "ok";
+const char AT_TXT_error[]       =   "error";
+const char AT_TXT_no_change[]   =   "no change";
 
 /**************************************************
     Types
 **************************************************/
+typedef uint8_t at_token_enum;
+enum
+    {
+    AT_TOK_no_this_fun,
+    AT_TOK_ok,
+    AT_TOK_error,
+    AT_TOK_no_change
+    /* AT CMDs  */
+    AT_TOK_NO_CMD,
+    AT_TOK_RST,  
+    AT_TOK_AT,  
+    AT_TOK_GMR,
+    AT_TOK_GSLP,
+    AT_TOK_ATE,
+    AT_TOK_CWMODE,
+    AT_TOK_CWJAP,
+    AT_TOK_CWLAP,
+    AT_TOK_CWQAP,
+    AT_TOK_CWSAP,
+    AT_TOK_CWDHCP,
+    AT_TOK_CIPSTATUS,
+    AT_TOK_CIPSTA,
+    AT_TOK_CIPAP,
+    AT_TOK_CIPSTART,
+    AT_TOK_CIPSEND,
+    AT_TOK_CIPCLOSE,
+    AT_TOK_CIFSR,
+    AT_TOK_CIPMUX,
+    AT_TOK_CIPSERVER,
+    AT_TOK_IPD,
+    };
 
 /**************************************************
     Variables
@@ -20,30 +79,63 @@
 at_cmd_to_text_type _at_cmds[] =
     {
 /* BASIC    */
-    { AT_CMD_NO_CMD,    "AT_NO_CMD"     },
-    { AT_CMD_RST,       "AT+RST"        },
-    { AT_CMD_AT,        "AT\r"          },
-    { AT_CMD_GMR,       "AT+GMR"        },
-    { AT_CMD_GSLP,      "AT+GSLP"       },
-    { AT_CMD_ATE,       "ATE"           },
+    { AT_CMD_NO_CMD,    AT_TXT_NO_CMD     },
+    { AT_CMD_RST,       AT_TXT_RST        },
+    { AT_CMD_AT,        AT_TXT_AT         },
+    { AT_CMD_GMR,       AT_TXT_GMR        },
+    { AT_CMD_GSLP,      AT_TXT_GSLP       },
+    { AT_CMD_ATE,       AT_TXT_ATE        },
 /* WIFI     */
-    { AT_CMD_CWMODE,    "AT+CWMODE"     },
-    { AT_CMD_CWJAP,     "AT+CWJAP"      },
-    { AT_CMD_CWLAP,     "AT+CWLAP"      },
-    { AT_CMD_CWQAP,     "AT+CWQAP"      },
-    { AT_CMD_CWSAP,     "AT+CWSAP"      },
-    { AT_CMD_CWDHCP,    "AT+CWDHCP"     },
+    { AT_CMD_CWMODE,    AT_TXT_CWMODE     },
+    { AT_CMD_CWJAP,     AT_TXT_CWJAP      },
+    { AT_CMD_CWLAP,     AT_TXT_CWLAP      },
+    { AT_CMD_CWQAP,     AT_TXT_CWQAP      },
+    { AT_CMD_CWSAP,     AT_TXT_CWSAP      },
+    { AT_CMD_CWDHCP,    AT_TXT_CWDHCP     },
 /* TCP/IP   */
-    { AT_CMD_CIPSTATUS, "AT+CIPSTATUS"  },
-    { AT_CMD_CIPSTART,  "AT+CIPSTART"   },
-    { AT_CMD_CIPSEND,   "AT+CIPSEND"    },
-    { AT_CMD_CIPCLOSE,  "AT+CIPCLOSE"   },
-    { AT_CMD_CIFSR,     "AT+CIFSR"      },
-    { AT_CMD_CIPMUX,    "AT+CIPMUX"     },
-    { AT_CMD_CIPSERVER, "AT+CIPSERVER"  },
-    { AT_CMD_IPD,       "+IPD"          }
+    { AT_CMD_CIPSTATUS, AT_TXT_CIPSTATUS  },
+    { AT_CMD_CIPSTA,    AT_TXT_CIPSTA     },
+    { AT_CMD_CIPAP,     AT_TXT_CIPAP      },
+    { AT_CMD_CIPSTART,  AT_TXT_CIPSTART   },
+    { AT_CMD_CIPSEND,   AT_TXT_CIPSEND    },
+    { AT_CMD_CIPCLOSE,  AT_TXT_CIPCLOSE   },
+    { AT_CMD_CIFSR,     AT_TXT_CIFSR      },
+    { AT_CMD_CIPMUX,    AT_TXT_CIPMUX     },
+    { AT_CMD_CIPSERVER, AT_TXT_CIPSERVER  },
+    { AT_CMD_IPD,       AT_TXT_IPD        }
     };
 at_cmd_to_text_type *at_cmds = _at_cmds;
+
+at_cmd_to_text_type _at_toks[] =
+    {
+    { AT_TOK_no_this_fun,   AT_TXT_no_this_fun  },
+    { AT_TOK_ok,            AT_TXT_ok           },
+    { AT_TOK_error,         AT_TXT_error        },
+    { AT_TOK_no_change,     AT_TXT_no_change    },
+    { AT_TOK_NO_CMD,        AT_TXT_NO_CMD       },
+    { AT_TOK_RST,           AT_TXT_RST          },
+    { AT_TOK_AT,            AT_TXT_AT           },
+    { AT_TOK_GMR,           AT_TXT_GMR          },
+    { AT_TOK_GSLP,          AT_TXT_GSLP         },
+    { AT_TOK_ATE,           AT_TXT_ATE          },
+    { AT_TOK_CWMODE,        AT_TXT_CWMODE       },
+    { AT_TOK_CWJAP,         AT_TXT_CWJAP        },
+    { AT_TOK_CWLAP,         AT_TXT_CWLAP        },
+    { AT_TOK_CWQAP,         AT_TXT_CWQAP        },
+    { AT_TOK_CWSAP,         AT_TXT_CWSAP        },
+    { AT_TOK_CWDHCP,        AT_TXT_CWDHCP       },
+    { AT_TOK_CIPSTATUS,     AT_TXT_CIPSTATUS    },
+    { AT_TOK_CIPSTA,        AT_TXT_CIPSTA       },
+    { AT_TOK_CIPAP,         AT_TXT_CIPAP        },
+    { AT_TOK_CIPSTART,      AT_TXT_CIPSTART     },
+    { AT_TOK_CIPSEND,       AT_TXT_CIPSEND      },
+    { AT_TOK_CIPCLOSE,      AT_TXT_CIPCLOSE     },
+    { AT_TOK_CIFSR,         AT_TXT_CIFSR        },
+    { AT_TOK_CIPMUX,        AT_TXT_CIPMUX       },
+    { AT_TOK_CIPSERVER,     AT_TXT_CIPSERVER    },
+    { AT_TOK_IPD,           AT_TXT_IPD          }
+    };
+
 
 /**************************************************
     Prototypes
@@ -136,6 +228,74 @@ if( !found )
 return(ret);
 
 };
+
+/**************************************************
+    find_token
+**************************************************/
+int find_token
+    (
+    at_cmd_to_text_type    *tok,
+    int                     tok_num,
+    char                   *in,
+    int                     in_size
+    )
+{
+int             i;
+int             idx;
+int             ret;
+char           *ok_ptr;
+char           *err_ptr;
+at_return_type  at_ret;
+int             found;
+
+
+
+/*
+If there's x more number of chars,
+    compare them with a list of expected strs
+    if a token is found
+    return the token and idx
+*/
+
+
+}
+
+
+/**************************************************
+    match
+**************************************************/
+int match
+    (
+    char                   *tok,
+    int                     tok_size,
+    char                   *in,
+    int                     in_size
+    )
+{
+int             i;
+int             found;
+
+found = 1;
+
+for( i = 0; i < tok_size && i < in_size; i++ )
+    {
+    if( tok[i] != in[i] )
+        {
+        found = 0;
+        break;
+        }    
+    }
+if( found )
+    {
+    if( in[tok_size] != '\n'
+     && in[tok_size] != '\r'
+     && in[tok_size] != '\0'
+     && in_size != tok_size )
+        {
+        found = 0;
+        }
+    }
+}
 
 
 /**************************************************

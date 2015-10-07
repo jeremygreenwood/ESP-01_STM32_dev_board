@@ -103,7 +103,6 @@ for(;;)
 return(ret);
 }
 
-
 /**************************************************
     cb_at
 **************************************************/
@@ -157,4 +156,76 @@ if(send)
 return(0);
 }
 
+
+/**************************************************
+    cb_reset
+**************************************************/
+int cb_reset
+    ( 
+    at_return_type   *ret
+    )
+{
+/*---------------------------------- 
+Local Variables
+---------------------------------- */
+at_cb_request_type      at_cb_req;
+char                   *cmd;
+int                     send;
+
+char cmd_seq[] = 
+    {
+    AT_CMD_AT,
+    AT_CMD_RST,
+    AT_CMD_ATE "1",
+    AT_CMD_CWMODE "=3",
+    AT_CMD_CWSAP "\"esp_sid\",\"password\",5,3",
+    AT_CMD_CIPAP "=192.168.4.1",
+    AT_CMD_CIPMUX "=1",
+    AT_CMD_CIPSERVER "=1,5000",
+    AT_CMD_CIPSTATUS
+};
+
+/*---------------------------------- 
+Init
+---------------------------------- */
+send = 0;
+
+/*---------------------------------- 
+Print
+---------------------------------- */
+printf("Got cb_at()\ncmd: %d, status: %d, raw[%d]: --%s--\n",
+        ret->cmd, ret->status, ret->raw_size, ret->raw);
+
+if( ret->status == AT_STATUS_OK )
+    {
+    
+    }
+
+/*---------------------------------- 
+Switch on incoming cmd
+---------------------------------- */
+switch( ret->cmd )
+    {
+    case AT_CMD_AT:
+        at_cb_req.cmd = AT_CMD_GMR;
+        at_cb_req.cb = cb_at;
+        at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
+        cmd = at_get_cmd_txt(at_cb_req.cmd);
+        send = 1;
+        break;
+    
+
+    }
+
+/*---------------------------------- 
+Setup callback, and write cmd out
+---------------------------------- */
+if(send)
+    {
+    at_submit_cb(&at_state, &at_cb_req);
+    at_send_cmd(cmd, strlen(cmd));
+    }
+    
+return(0);
+}
 
