@@ -83,7 +83,7 @@ Do main forever
 buf_curr = 0;
 for(;;)
     {
-    sleep(3);
+    // sleep(3);
     read_ret = uart_read(&main_buf[buf_curr], MAIN_BUF_SIZE - buf_curr);
     if(read_ret > 0 )
         {

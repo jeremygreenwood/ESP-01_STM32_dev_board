@@ -10,33 +10,33 @@
 **************************************************/
 #define cnt_of_array(ary)          (sizeof(ary) / sizeof(ary[0]))
 
-const char AT_TXT_NO_CMD[]  =   "AT_NO_CMD";
-const char AT_TXT_RST[]     =   "AT+RST";
-const char AT_TXT_AT[]      =   "AT";
-const char AT_TXT_GMR[]     =   "AT+GMR";
-const char AT_TXT_GSLP[]    =   "AT+GSLP";
-const char AT_TXT_ATE[]     =   "ATE";
-const char AT_TXT_CWMODE[]  =   "AT+CWMODE";
-const char AT_TXT_CWJAP[]   =   "AT+CWJAP";
-const char AT_TXT_CWLAP[]   =   "AT+CWLAP";
-const char AT_TXT_CWQAP[]   =   "AT+CWQAP";
-const char AT_TXT_CWSAP[]   =   "AT+CWSAP";
-const char AT_TXT_CWDHCP[]  =   "AT+CWDHCP";
-const char AT_TXT_CIPSTATUS[] = "AT+CIPSTATUS";
-const char AT_TXT_CIPSTA[]  =   "AT+CIPSTA";
-const char AT_TXT_CIPAP[]   =   "AT+CIPAP";
-const char AT_TXT_CIPSTART[] =  "AT+CIPSTART";
-const char AT_TXT_CIPSEND[] =   "AT+CIPSEND";
-const char AT_TXT_CIPCLOSE[] =  "AT+CIPCLOSE";
-const char AT_TXT_CIFSR[]   =   "AT+CIFSR";
-const char AT_TXT_CIPMUX[]  =   "AT+CIPMUX";
-const char AT_TXT_CIPSERVER[] = "AT+CIPSERVER";
-const char AT_TXT_IPD[]     =   "+IPD";
+char AT_TXT_NO_CMD[]  =   "AT_NO_CMD";
+char AT_TXT_RST[]     =   "AT+RST";
+char AT_TXT_AT[]      =   "AT";
+char AT_TXT_GMR[]     =   "AT+GMR";
+char AT_TXT_GSLP[]    =   "AT+GSLP";
+char AT_TXT_ATE[]     =   "ATE";
+char AT_TXT_CWMODE[]  =   "AT+CWMODE";
+char AT_TXT_CWJAP[]   =   "AT+CWJAP";
+char AT_TXT_CWLAP[]   =   "AT+CWLAP";
+char AT_TXT_CWQAP[]   =   "AT+CWQAP";
+char AT_TXT_CWSAP[]   =   "AT+CWSAP";
+char AT_TXT_CWDHCP[]  =   "AT+CWDHCP";
+char AT_TXT_CIPSTATUS[] = "AT+CIPSTATUS";
+char AT_TXT_CIPSTA[]  =   "AT+CIPSTA";
+char AT_TXT_CIPAP[]   =   "AT+CIPAP";
+char AT_TXT_CIPSTART[] =  "AT+CIPSTART";
+char AT_TXT_CIPSEND[] =   "AT+CIPSEND";
+char AT_TXT_CIPCLOSE[] =  "AT+CIPCLOSE";
+char AT_TXT_CIFSR[]   =   "AT+CIFSR";
+char AT_TXT_CIPMUX[]  =   "AT+CIPMUX";
+char AT_TXT_CIPSERVER[] = "AT+CIPSERVER";
+char AT_TXT_IPD[]     =   "+IPD";
 
-const char AT_TXT_no_this_fun[] =   "no this fun";
-const char AT_TXT_ok[]          =   "ok";
-const char AT_TXT_error[]       =   "error";
-const char AT_TXT_no_change[]   =   "no change";
+char AT_TXT_no_this_fun[] =   "no this fun";
+char AT_TXT_ok[]          =   "ok";
+char AT_TXT_error[]       =   "error";
+char AT_TXT_no_change[]   =   "no change";
 
 /**************************************************
     Types
@@ -44,11 +44,13 @@ const char AT_TXT_no_change[]   =   "no change";
 typedef uint8_t at_token_enum;
 enum
     {
+    AT_TOK_INVALID,
     AT_TOK_no_this_fun,
     AT_TOK_ok,
     AT_TOK_error,
-    AT_TOK_no_change
+    AT_TOK_no_change,
     /* AT CMDs  */
+    AT_TOK_CMDS_START,
     AT_TOK_NO_CMD,
     AT_TOK_RST,  
     AT_TOK_AT,  
@@ -71,6 +73,7 @@ enum
     AT_TOK_CIPMUX,
     AT_TOK_CIPSERVER,
     AT_TOK_IPD,
+    AT_TOK_CMDS_END,
     };
 
 /**************************************************
@@ -141,6 +144,8 @@ at_cmd_to_text_type _at_toks[] =
     Prototypes
 **************************************************/
 int call_callback(at_parser_state_type *p, at_return_type *at_ret);
+at_token_enum any_match(at_cmd_to_text_type *tok, int tok_num, char *in, int in_size);
+int match( char *tok, char *in, int in_size);
 
 /**************************************************
     Callback Prototypes
@@ -178,54 +183,81 @@ char           *ok_ptr;
 char           *err_ptr;
 at_return_type  at_ret;
 int             found;
+at_token_enum   token; 
+int             raw_start;
+int             cb_ready;
 
 // printf( "at_process[%d]: --%s--\n", in_size, in );
-// HACK
 ret = in_size;
 
 idx = 0;
+cb_ready = 0;
 do
-{
-found = 0;
-for( i = 0; i < cnt_of_array(_at_cmds); i++ )
     {
-    if( strncmp(&in[idx], at_cmds[i].txt, strlen(at_cmds[i].txt)) == 0 )
-        {
-        at_ret.status = AT_STATUS_UNKNOWN;
-        at_ret.raw_size = in_size;
-        err_ptr = strstr( &in[idx], "errror");
-        ok_ptr = strstr( &in[idx], "OK");
-        if(ok_ptr != NULL && err_ptr != NULL)
-            {
-            at_ret.status = ok_ptr < err_ptr ? AT_STATUS_OK : AT_STATUS_ERR;
-            at_ret.raw_size =  (ok_ptr - &in[idx]) + strlen(ok_ptr < err_ptr ? "OK" : "error");
-            }
-        else if(ok_ptr != NULL)
-            {
-            at_ret.status = AT_STATUS_OK;
-            at_ret.raw_size =  (ok_ptr - &in[idx]) + strlen("OK");
-            }
-        else if(err_ptr != NULL)
-            {
-            at_ret.status = AT_STATUS_ERR;
-            at_ret.raw_size =  ((int)ok_ptr - (int)&p[idx]) + (int)strlen("error");
-            }
-        at_ret.cmd = at_cmds[i].cmd;
-        at_ret.raw = &in[idx];
-        idx += at_ret.raw_size;
-        ret = idx;
-        found = 1;
-        call_callback(p, &at_ret);
-        break;
-        }
-    }
-if( !found )
-    {
-    idx += 1;
-    }
-} while( idx < in_size );
+    found = find_token( _at_toks, cnt_of_array(_at_toks), &in[idx], in_size - idx, &token );
 
-return(ret);
+    if( found > 0 )
+        {
+        idx += found;
+        switch( token )
+            {
+            case AT_TOK_no_this_fun:
+                at_ret.status = AT_STATUS_ERR;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_no_this_fun );
+                at_ret.raw_size = idx - raw_start;
+                break;
+            case AT_TOK_ok:
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_ok );
+                at_ret.raw_size = idx - raw_start;
+                break;
+            case AT_TOK_error:
+                at_ret.status = AT_STATUS_ERR;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_error );
+                at_ret.raw_size = idx - raw_start;
+                break;
+            case AT_TOK_no_change:
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_no_change );
+                at_ret.raw_size = idx - raw_start;
+                at_ret.status = AT_STATUS_OK;
+                break;
+            default:
+                if( token > AT_TOK_CMDS_START
+                 && token < AT_TOK_CMDS_END )
+                    {
+                    at_ret.cmd = token;
+                    raw_start = idx;
+                    idx += strlen( at_get_cmd_txt( token ) );
+                    }
+                else
+                    {
+                    /* ERROR  */
+                    }
+                break;
+            }
+        }
+    else if( idx == 0 )
+        {
+        /* didn't find anything at all, throw it all away*/
+        printf( "Throwing away some data: %d\n", in_size );
+        idx = in_size;
+        }
+
+    if( cb_ready )
+        {
+        call_callback(p, &at_ret);
+        memset( &at_ret, 0, sizeof( at_return_type ) );
+        cb_ready = 0;
+        }
+
+    } while( found >= 0 && idx < in_size );
+
+return(idx);
 
 };
 
@@ -237,27 +269,52 @@ int find_token
     at_cmd_to_text_type    *tok,
     int                     tok_num,
     char                   *in,
+    int                     in_size,
+    at_token_enum          *found_tok
+    )
+{
+int             i;
+int             ret;
+
+ret = -1;
+
+for( i = 0; i < in_size; i++ )
+    {
+    *found_tok = any_match( tok, tok_num, &in[i], in_size - i);
+    if( *found_tok != AT_TOK_INVALID )
+        {
+        ret = i;
+        break;
+        } 
+    }
+return( ret );
+}
+
+
+/**************************************************
+    any_match
+**************************************************/
+at_token_enum any_match
+    (
+    at_cmd_to_text_type    *tok,
+    int                     tok_num,
+    char                   *in,
     int                     in_size
     )
 {
 int             i;
-int             idx;
-int             ret;
-char           *ok_ptr;
-char           *err_ptr;
-at_return_type  at_ret;
-int             found;
+at_token_enum   found_match;
 
+found_match = AT_TOK_INVALID;
 
-
-/*
-If there's x more number of chars,
-    compare them with a list of expected strs
-    if a token is found
-    return the token and idx
-*/
-
-
+for( i =  0; i < tok_num; i++ )
+    {
+    if( match( tok[i].txt, in, in_size ) )
+        {
+        found_match = tok[i].cmd;
+        }
+    }
+return( found_match );
 }
 
 
@@ -267,14 +324,15 @@ If there's x more number of chars,
 int match
     (
     char                   *tok,
-    int                     tok_size,
     char                   *in,
     int                     in_size
     )
 {
 int             i;
 int             found;
+int             tok_size;
 
+tok_size = strlen(tok);
 found = 1;
 
 for( i = 0; i < tok_size && i < in_size; i++ )
@@ -295,6 +353,7 @@ if( found )
         found = 0;
         }
     }
+return( found );
 }
 
 
