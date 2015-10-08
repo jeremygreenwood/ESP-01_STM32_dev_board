@@ -3,14 +3,53 @@
 ----------------------------------------------------------------------*/
 
 #include <string.h>
+#include <stdbool.h>
+
 #include "uart_print.h"
 
+/*----------------------------------------------------------------------
+                            CONSTANTS
+----------------------------------------------------------------------*/
+
+#define UART_RX_BUF_SZ  1024        /* UART read buffer size        */
 
 /*--------------------------------------------------------
 TESTING
 --------------------------------------------------------*/
 volatile char StringLoop[] = "The quick brown fox jumps over the lazy dog\r\n";
 
+/*----------------------------------------------------------------------
+                            TYPES
+----------------------------------------------------------------------*/
+
+/*--------------------------------------------------------
+TODO convert this to a ring buffer to eliminate possible
+overruns (hardware has only a single byte for RX/TX)
+--------------------------------------------------------*/
+typedef struct                      /* UART interrupt buffer data   */
+{
+    void               *buf_ptr_start;
+                                    /* pointer to beginning of buffer*/
+    void               *buf_ptr_cur;/* pointer to current spot in buf*/
+    uint16_t            buf_sz;     /* size of the buffer            */
+    uint16_t            num_bytes;  /* number of bytes in the buffer */
+    bool                error_overrun;
+                                    /* out of memory error occurred  */
+} uart_irq_buf_type;
+
+/*----------------------------------------------------------------------
+                            VARIABLES
+----------------------------------------------------------------------*/
+
+static uint8_t          s_uart_rx_buf[ UART_RX_BUF_SZ ];
+                                    /* UART read buffer             */
+static uart_irq_buf_type
+                        s_uart_rx_buf_data;
+                                    /* UART RX buffer data          */
+
+/*----------------------------------------------------------------------
+                            PROCEDURES
+----------------------------------------------------------------------*/
 
 /*--------------------------------------------------------
 Setup processor clocks to use UART 1
@@ -80,6 +119,52 @@ void uart_irq_setup( void )
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init( &NVIC_InitStructure );
+
+    /*--------------------------------------------------------
+    Setup UART RX state data
+    --------------------------------------------------------*/
+    s_uart_rx_buf_data.buf_sz        = UART_RX_BUF_SZ;
+    s_uart_rx_buf_data.num_bytes     = 0;
+    s_uart_rx_buf_data.buf_ptr_start = s_uart_rx_buf;
+    s_uart_rx_buf_data.buf_ptr_cur   = s_uart_rx_buf;
+    s_uart_rx_buf_data.error_overrun = false;
+}
+
+
+/*--------------------------------------------------------
+Get UART 1 RX data which has been read via interrupt
+--------------------------------------------------------*/
+uint16_t uart_read( void *buf, uint16_t bytes )
+{
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    uint16_t            bytes_ret;  /* number of bytes to copy      */
+
+    if( bytes <= s_uart_rx_buf_data.num_bytes )
+    {
+        /*--------------------------------------------------------
+        Get the requested number of bytes from the UART RX buffer
+        --------------------------------------------------------*/
+        bytes_ret = bytes;
+    }
+    else
+    {
+        /*--------------------------------------------------------
+        Get all of the bytes from the UART RX buffer
+        --------------------------------------------------------*/
+        bytes_ret = s_uart_rx_buf_data.num_bytes;
+    }
+
+    /*--------------------------------------------------------
+    Copy received data to return buffer
+    --------------------------------------------------------*/
+    memcpy( buf, &s_uart_rx_buf_data.buf_ptr_start, bytes_ret );
+
+    /*--------------------------------------------------------
+    Return number of bytes copied to buffer
+    --------------------------------------------------------*/
+    return bytes_ret;
 }
 
 
@@ -151,13 +236,13 @@ void uart_test( void )
 
 /*--------------------------------------------------------
 Wait for UART 1 receive to have data ready
+NOTE: this will block indefinitely
 --------------------------------------------------------*/
 void uart_wait_rx_ready( void )
 {
     /*--------------------------------------------------------
     This blocks indefinitely waiting for the RX data register
     to have data
-    TODO consider adding a timeout to this while loop
     --------------------------------------------------------*/
     while( USART_GetFlagStatus( USART1, USART_FLAG_RXNE ) == RESET );
 }
@@ -165,13 +250,13 @@ void uart_wait_rx_ready( void )
 
 /*--------------------------------------------------------
 Wait for UART 1 transmit to become ready
+NOTE: this will block indefinitely
 --------------------------------------------------------*/
 void uart_wait_tx_ready( void )
 {
     /*--------------------------------------------------------
     This blocks indefinitely waiting for the TX data register
     to become empty
-    TODO consider adding a timeout to this while loop
     --------------------------------------------------------*/
     while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
 }
@@ -242,32 +327,43 @@ UART 1 interrupt handler
 void USART1_IRQHandler( void )
 {
     /*--------------------------------------------------------
-    TESTING
+    TODO read data from UART RX register and update s_uart_rx_buf_data
+      * check for buffer overflow (s_uart_rx_buf_data.num_bytes >= s_uart_rx_buf_data.buf_sz)
+      * put RX data byte in s_uart_rx_buf_data.buf_ptr_cur
+      * advance s_uart_rx_buf_data.buf_ptr_cur
+      * increment s_uart_rx_buf_data.num_bytes
     --------------------------------------------------------*/
 
-    /*--------------------------------------------------------
-    Local static variables
-    --------------------------------------------------------*/
-    static uint16_t     tx_index = 0;
-    static uint16_t     rx_index = 0;
+//    s_uart_rx_buf_data.
 
-    if( USART_GetITStatus( USART1, USART_IT_TXE ) != RESET ) // Transmit the string in a loop
-    {
-        USART_SendData( USART1, StringLoop[ tx_index++ ] );
 
-        if( tx_index >= ( sizeof(StringLoop) - 1 ) )
-        {
-            tx_index = 0;
-        }
-    }
-
-    if( USART_GetITStatus( USART1, USART_IT_RXNE ) != RESET ) // Received characters modify string
-    {
-        StringLoop[ rx_index++ ] = USART_ReceiveData( USART1 );
-
-        if( rx_index >= ( sizeof(StringLoop) - 1 ) )
-        {
-            rx_index = 0;
-        }
-    }
+//    /*--------------------------------------------------------
+//    TESTING
+//    --------------------------------------------------------*/
+//
+//    /*--------------------------------------------------------
+//    Local static variables
+//    --------------------------------------------------------*/
+//    static uint16_t     tx_index = 0;
+//    static uint16_t     rx_index = 0;
+//
+//    if( USART_GetITStatus( USART1, USART_IT_TXE ) != RESET ) // Transmit the string in a loop
+//    {
+//        USART_SendData( USART1, StringLoop[ tx_index++ ] );
+//
+//        if( tx_index >= ( sizeof(StringLoop) - 1 ) )
+//        {
+//            tx_index = 0;
+//        }
+//    }
+//
+//    if( USART_GetITStatus( USART1, USART_IT_RXNE ) != RESET ) // Received characters modify string
+//    {
+//        StringLoop[ rx_index++ ] = USART_ReceiveData( USART1 );
+//
+//        if( rx_index >= ( sizeof(StringLoop) - 1 ) )
+//        {
+//            rx_index = 0;
+//        }
+//    }
 }
