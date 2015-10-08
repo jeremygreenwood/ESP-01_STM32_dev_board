@@ -146,6 +146,8 @@ at_cmd_to_text_type _at_toks[] =
 int call_callback(at_parser_state_type *p, at_return_type *at_ret);
 at_token_enum any_match(at_cmd_to_text_type *tok, int tok_num, char *in, int in_size);
 int match( char *tok, char *in, int in_size);
+int find_token( at_cmd_to_text_type *tok, int tok_num, 
+                char *in, int in_size, at_token_enum *found_tok);
 
 /**************************************************
     Callback Prototypes
@@ -176,11 +178,7 @@ int at_process
     int                     in_size
     )
 {
-int             i;
 int             idx;
-int             ret;
-char           *ok_ptr;
-char           *err_ptr;
 at_return_type  at_ret;
 int             found;
 at_token_enum   token; 
@@ -188,7 +186,6 @@ int             raw_start;
 int             cb_ready;
 
 // printf( "at_process[%d]: --%s--\n", in_size, in );
-ret = in_size;
 
 idx = 0;
 cb_ready = 0;
