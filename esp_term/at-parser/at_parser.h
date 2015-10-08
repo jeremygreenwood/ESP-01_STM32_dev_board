@@ -34,7 +34,8 @@ enum
     AT_CMD_CIFSR,
     AT_CMD_CIPMUX,
     AT_CMD_CIPSERVER,
-    AT_CMD_IPD
+    AT_CMD_IPD,
+    AT_CMD_send_ok
     };
 
 typedef uint8_t at_status_enum;
@@ -97,7 +98,7 @@ int at_process(at_parser_state_type *p, char *in, int in_size);
 int at_submit_cb(at_parser_state_type *p, at_cb_request_type *cb);
 int at_remove_cb(at_parser_state_type *p, at_cb_request_type *cb);
 
-void at_send_cmd(char *in, int in_size);
+void at_send_cmd(at_cmd_enum cmd);
 void at_send_cmd_with_text(at_cmd_enum cmd, char *in, int in_size);
 char *at_get_cmd_txt(at_cmd_enum cmd);
 

@@ -34,9 +34,11 @@ char AT_TXT_CIPSERVER[] = "AT+CIPSERVER";
 char AT_TXT_IPD[]     =   "+IPD";
 
 char AT_TXT_no_this_fun[] =   "no this fun";
-char AT_TXT_ok[]          =   "ok";
-char AT_TXT_error[]       =   "error";
+char AT_TXT_ok[]          =   "OK";
+char AT_TXT_error[]       =   "ERROR";
 char AT_TXT_no_change[]   =   "no change";
+char AT_TXT_ready[]       =   "ready";
+char AT_TXT_send_ok[]     =   "SEND OK";
 
 /**************************************************
     Types
@@ -44,36 +46,39 @@ char AT_TXT_no_change[]   =   "no change";
 typedef uint8_t at_token_enum;
 enum
     {
-    AT_TOK_INVALID,
+    /* AT CMDs  */
+                        AT_TOK_CMDS_START = 0,
+/*  AT_CMD_NO_CMD   */  AT_TOK_NO_CMD = 0,
+/*  AT_CMD_RST      */  AT_TOK_RST,  
+/*  AT_CMD_AT       */  AT_TOK_AT,  
+/*  AT_CMD_GMR      */  AT_TOK_GMR,
+/*  AT_CMD_GSLP     */  AT_TOK_GSLP,
+/*  AT_CMD_ATE      */  AT_TOK_ATE,
+/*  AT_CMD_CWMODE   */  AT_TOK_CWMODE,
+/*  AT_CMD_CWJAP    */  AT_TOK_CWJAP,
+/*  AT_CMD_CWLAP    */  AT_TOK_CWLAP,
+/*  AT_CMD_CWQAP    */  AT_TOK_CWQAP,
+/*  AT_CMD_CWSAP    */  AT_TOK_CWSAP,
+/*  AT_CMD_CWDHCP   */  AT_TOK_CWDHCP,
+/*  AT_CMD_CIPAP    */  AT_TOK_CIPAP,
+/*  AT_CMD_CIPSTATUS*/  AT_TOK_CIPSTATUS,
+/*  AT_CMD_CIPSTART */  AT_TOK_CIPSTART,
+/*  AT_CMD_CIPSTA   */  AT_TOK_CIPSTA,
+/*  AT_CMD_CIPSEND  */  AT_TOK_CIPSEND,
+/*  AT_CMD_CIPCLOSE */  AT_TOK_CIPCLOSE,
+/*  AT_CMD_CIFSR    */  AT_TOK_CIFSR,
+/*  AT_CMD_CIPMUX   */  AT_TOK_CIPMUX,
+/*  AT_CMD_CIPSERVER*/  AT_TOK_CIPSERVER,
+/*  AT_CMD_IPD      */  AT_TOK_IPD,
+                        AT_TOK_CMDS_END,
+                        AT_TOK_INVALID,
+    /* AT Responses  */
     AT_TOK_no_this_fun,
     AT_TOK_ok,
     AT_TOK_error,
     AT_TOK_no_change,
-    /* AT CMDs  */
-    AT_TOK_CMDS_START,
-    AT_TOK_NO_CMD,
-    AT_TOK_RST,  
-    AT_TOK_AT,  
-    AT_TOK_GMR,
-    AT_TOK_GSLP,
-    AT_TOK_ATE,
-    AT_TOK_CWMODE,
-    AT_TOK_CWJAP,
-    AT_TOK_CWLAP,
-    AT_TOK_CWQAP,
-    AT_TOK_CWSAP,
-    AT_TOK_CWDHCP,
-    AT_TOK_CIPSTATUS,
-    AT_TOK_CIPSTA,
-    AT_TOK_CIPAP,
-    AT_TOK_CIPSTART,
-    AT_TOK_CIPSEND,
-    AT_TOK_CIPCLOSE,
-    AT_TOK_CIFSR,
-    AT_TOK_CIPMUX,
-    AT_TOK_CIPSERVER,
-    AT_TOK_IPD,
-    AT_TOK_CMDS_END,
+    AT_TOK_ready,
+    AT_TOK_send_ok,
     };
 
 /**************************************************
@@ -115,6 +120,8 @@ at_cmd_to_text_type _at_toks[] =
     { AT_TOK_ok,            AT_TXT_ok           },
     { AT_TOK_error,         AT_TXT_error        },
     { AT_TOK_no_change,     AT_TXT_no_change    },
+    { AT_TOK_ready,         AT_TXT_ready        },
+    { AT_TOK_send_ok,       AT_TXT_send_ok      },
     { AT_TOK_NO_CMD,        AT_TXT_NO_CMD       },
     { AT_TOK_RST,           AT_TXT_RST          },
     { AT_TOK_AT,            AT_TXT_AT           },
@@ -179,6 +186,7 @@ int at_process
     )
 {
 int             idx;
+int             ret;
 at_return_type  at_ret;
 int             found;
 at_token_enum   token; 
@@ -188,12 +196,13 @@ int             cb_ready;
 // printf( "at_process[%d]: --%s--\n", in_size, in );
 
 idx = 0;
+ret = 0;
 cb_ready = 0;
 do
     {
     found = find_token( _at_toks, cnt_of_array(_at_toks), &in[idx], in_size - idx, &token );
 
-    if( found > 0 )
+    if( found >= 0 )
         {
         idx += found;
         switch( token )
@@ -203,18 +212,40 @@ do
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_no_this_fun );
                 at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
+                break;
+            case AT_TOK_send_ok:
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_send_ok );
+                at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
+                break;
+            case AT_TOK_ready:
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += strlen( AT_TXT_ready );
+                at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
                 break;
             case AT_TOK_ok:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_ok );
                 at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
+                if(at_ret.cmd == AT_TOK_RST)
+                    {
+                    cb_ready = 0;
+                    at_ret.raw_size = 0;
+                    }
                 break;
             case AT_TOK_error:
                 at_ret.status = AT_STATUS_ERR;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_error );
                 at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
                 break;
             case AT_TOK_no_change:
                 at_ret.status = AT_STATUS_OK;
@@ -222,27 +253,32 @@ do
                 idx += strlen( AT_TXT_no_change );
                 at_ret.raw_size = idx - raw_start;
                 at_ret.status = AT_STATUS_OK;
+                cb_ready = 1;
                 break;
             default:
                 if( token > AT_TOK_CMDS_START
                  && token < AT_TOK_CMDS_END )
                     {
+                    /*  ERROR - token is not a cmd */  
                     at_ret.cmd = token;
                     raw_start = idx;
                     idx += strlen( at_get_cmd_txt( token ) );
+                    if( token == AT_CMD_CIPSEND )
+                        {
+                        at_ret.status = AT_STATUS_OK;
+                        at_ret.raw = &in[raw_start];
+                        idx += 10;
+                        at_ret.raw_size = idx - raw_start;
+                        cb_ready = 1;
+                        }
                     }
                 else
                     {
+                    printf("Bad enum or cmd received: %u\n", token);
                     /* ERROR  */
                     }
                 break;
             }
-        }
-    else if( idx == 0 )
-        {
-        /* didn't find anything at all, throw it all away*/
-        printf( "Throwing away some data: %d\n", in_size );
-        idx = in_size;
         }
 
     if( cb_ready )
@@ -250,11 +286,12 @@ do
         call_callback(p, &at_ret);
         memset( &at_ret, 0, sizeof( at_return_type ) );
         cb_ready = 0;
+        ret = idx;
         }
 
     } while( found >= 0 && idx < in_size );
 
-return(idx);
+return(ret);
 
 };
 
@@ -309,6 +346,7 @@ for( i =  0; i < tok_num; i++ )
     if( match( tok[i].txt, in, in_size ) )
         {
         found_match = tok[i].cmd;
+        break;
         }
     }
 return( found_match );
@@ -345,6 +383,9 @@ if( found )
     if( in[tok_size] != '\n'
      && in[tok_size] != '\r'
      && in[tok_size] != '\0'
+     && in[tok_size] != '='
+     && in[tok_size] != '\"'
+     && in[tok_size] != ','
      && in_size != tok_size )
         {
         found = 0;
@@ -402,20 +443,24 @@ for( i = 0; i < p->req_num; i++ )
         }
     }
 return( ret );
-};
+}
 
 /**************************************************
     at_send_cmd
 **************************************************/
 void at_send_cmd
     (
-    char   *in,
-    int     in_size
+    at_cmd_enum cmd
     )
 {
-unsigned char END[] = { 0x0D, 0x0A };
+unsigned char   END[] = { 0x0D, 0x0A };
+char           *cmd_txt;
+int             cmd_len;
 
-uart_write( in, in_size);
+cmd_txt = at_get_cmd_txt(cmd);
+cmd_len = strlen(cmd_txt);
+
+uart_write( cmd_txt, cmd_len);
 uart_write( (char*)END, 2);
 }
 
@@ -481,10 +526,19 @@ for( i = 0; i < p->req_num; i++ )
     if( p->requests[i].cmd == at_ret->cmd )
         {
         found = 1;
-        ret = p->requests[i].cb(at_ret);
+        if( p->requests[i].cb == NULL)
+            {
+            printf("Problem. Calling a NULL callback, i: %d, cmd: %u\n",
+                    i, at_ret->cmd);
+            }
+        else
+            {
+            ret = p->requests[i].cb(at_ret);
+            }
         if( p->requests[i].standing == AT_CB_STANDING_TRANSIENT )
             {
-            at_remove_cb( p, &p->requests[i] );
+            p->requests[i].cmd = AT_CMD_NO_CMD;
+            // at_remove_cb( p, &p->requests[i] );
             }
         // break;
         // NB:  calls all matching CB
