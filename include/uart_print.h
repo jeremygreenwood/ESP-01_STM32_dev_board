@@ -9,6 +9,9 @@
 #include "stm32f10x_usart.h"
 
 
+#define ERR_UART_OVERRUN    -1
+
+
 void uart_clock_setup( void );
 void uart_init( uint32_t baud_rate );
 void uart_irq_setup( void );

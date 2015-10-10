@@ -28,9 +28,9 @@ overruns (hardware has only a single byte for RX/TX)
 --------------------------------------------------------*/
 typedef struct                      /* UART interrupt buffer data   */
 {
-    void               *buf_ptr_start;
+    uint8_t            *buf_ptr_start;
                                     /* pointer to beginning of buffer*/
-    void               *buf_ptr_cur;/* pointer to current spot in buf*/
+    uint8_t            *buf_ptr_cur;/* pointer to current spot in buf*/
     uint16_t            buf_sz;     /* size of the buffer            */
     uint16_t            num_bytes;  /* number of bytes in the buffer */
     bool                error_overrun;
@@ -50,6 +50,12 @@ static uart_irq_buf_type
 /*----------------------------------------------------------------------
                             PROCEDURES
 ----------------------------------------------------------------------*/
+
+/*--------------------------------------------------------
+Local functions
+--------------------------------------------------------*/
+static void uart_irq_buf_reset( uart_irq_buf_type *irq_buf );
+
 
 /*--------------------------------------------------------
 Setup processor clocks to use UART 1
@@ -107,7 +113,7 @@ void uart_irq_setup( void )
     /*--------------------------------------------------------
     Enable UART 1 interrupts
     --------------------------------------------------------*/
-    USART_ITConfig( USART1, USART_IT_TXE, ENABLE );
+//    USART_ITConfig( USART1, USART_IT_TXE, ENABLE );
     USART_ITConfig( USART1, USART_IT_RXNE, ENABLE );
 
     /* Configure the NVIC Preemption Priority Bits */
@@ -132,21 +138,51 @@ void uart_irq_setup( void )
 
 
 /*--------------------------------------------------------
-Get UART 1 RX data which has been read via interrupt
+Get UART 1 RX data which has been read via interrupt.
+This has a signature similar to read() of unistd.h.
+NOTE: this functionality is not protected from interrupts
+and should be updated to use a ring buffer.
 --------------------------------------------------------*/
-uint16_t uart_read( void *buf, uint16_t bytes )
+uint16_t uart_read( void *buf, uint16_t bytes_req )
 {
     /*--------------------------------------------------------
     Local variables
     --------------------------------------------------------*/
     uint16_t            bytes_ret;  /* number of bytes to copy      */
+    uint16_t            bytes_rem;  /* number of bytes remaining    */
 
-    if( bytes <= s_uart_rx_buf_data.num_bytes )
+    /*--------------------------------------------------------
+    Check for UART errors
+    --------------------------------------------------------*/
+    if( s_uart_rx_buf_data.error_overrun == true )
+    {
+        /*--------------------------------------------------------
+        Clear UART RX buffer data
+        --------------------------------------------------------*/
+        uart_irq_buf_reset( &s_uart_rx_buf_data );
+
+        /*--------------------------------------------------------
+        Return error status
+        --------------------------------------------------------*/
+        return ERR_UART_OVERRUN;
+    }
+
+    /*--------------------------------------------------------
+    Disable UART interrupts while processing.
+    NOTE: consider removing when implementing ring buffer.
+    --------------------------------------------------------*/
+    NVIC_DisableIRQ( USART1_IRQn );
+
+    /*--------------------------------------------------------
+    Check if requested number of bytes can be returned
+    --------------------------------------------------------*/
+    if( bytes_req <= s_uart_rx_buf_data.num_bytes )
     {
         /*--------------------------------------------------------
         Get the requested number of bytes from the UART RX buffer
         --------------------------------------------------------*/
-        bytes_ret = bytes;
+        bytes_ret = bytes_req;
+        bytes_rem = s_uart_rx_buf_data.num_bytes - bytes_req;
     }
     else
     {
@@ -154,12 +190,33 @@ uint16_t uart_read( void *buf, uint16_t bytes )
         Get all of the bytes from the UART RX buffer
         --------------------------------------------------------*/
         bytes_ret = s_uart_rx_buf_data.num_bytes;
+        bytes_rem = 0;
     }
 
     /*--------------------------------------------------------
     Copy received data to return buffer
     --------------------------------------------------------*/
-    memcpy( buf, &s_uart_rx_buf_data.buf_ptr_start, bytes_ret );
+    memcpy( buf, s_uart_rx_buf_data.buf_ptr_start, bytes_ret );
+
+    /*--------------------------------------------------------
+    Move any remaining buffer data which needs to be copied
+    back to the beginning of the buffer. This does nothing if
+    bytes remaining is zero.
+    NOTE: this will not be necessary once a ring buffer is
+    implemented.
+    --------------------------------------------------------*/
+    memmove( s_uart_rx_buf_data.buf_ptr_start, s_uart_rx_buf_data.buf_ptr_cur, bytes_rem );
+
+    /*--------------------------------------------------------
+    Update buffer data
+    --------------------------------------------------------*/
+    s_uart_rx_buf_data.buf_ptr_cur = s_uart_rx_buf_data.buf_ptr_start;
+    s_uart_rx_buf_data.num_bytes   = bytes_rem;
+
+    /*--------------------------------------------------------
+    Re-enable UART interrupts.
+    --------------------------------------------------------*/
+    NVIC_EnableIRQ( USART1_IRQn );
 
     /*--------------------------------------------------------
     Return number of bytes copied to buffer
@@ -322,19 +379,43 @@ void uart_write_str( char *str )
 
 
 /*--------------------------------------------------------
-UART 1 interrupt handler
+UART 1 ISR. This handles both RX and TX interrupts.
 --------------------------------------------------------*/
 void USART1_IRQHandler( void )
 {
     /*--------------------------------------------------------
-    TODO read data from UART RX register and update s_uart_rx_buf_data
-      * check for buffer overflow (s_uart_rx_buf_data.num_bytes >= s_uart_rx_buf_data.buf_sz)
-      * put RX data byte in s_uart_rx_buf_data.buf_ptr_cur
-      * advance s_uart_rx_buf_data.buf_ptr_cur
-      * increment s_uart_rx_buf_data.num_bytes
+    Check if UART 1 has an RX data byte
     --------------------------------------------------------*/
+    if( USART_GetITStatus( USART1, USART_IT_RXNE ) != RESET )
+    {
+        /*--------------------------------------------------------
+        Check if UART RX buffer is full
+        --------------------------------------------------------*/
+        if( s_uart_rx_buf_data.num_bytes >= s_uart_rx_buf_data.buf_sz )
+        {
+            /*--------------------------------------------------------
+            Set overrun error
+            --------------------------------------------------------*/
+            s_uart_rx_buf_data.error_overrun = true;
+        }
+        else
+        {
+            /*--------------------------------------------------------
+            Receive data byte
+            --------------------------------------------------------*/
+            *s_uart_rx_buf_data.buf_ptr_cur = USART_ReceiveData( USART1 );
 
-//    s_uart_rx_buf_data.
+            /*--------------------------------------------------------
+            Advance the current buffer pointer
+            --------------------------------------------------------*/
+            s_uart_rx_buf_data.buf_ptr_cur++;
+
+            /*--------------------------------------------------------
+            Increment the number of bytes in the buffer
+            --------------------------------------------------------*/
+            s_uart_rx_buf_data.num_bytes++;
+        }
+    }
 
 
 //    /*--------------------------------------------------------
@@ -367,3 +448,20 @@ void USART1_IRQHandler( void )
 //        }
 //    }
 }
+
+
+/*--------------------------------------------------------
+Local functions
+--------------------------------------------------------*/
+
+/*--------------------------------------------------------
+Reset IRQ buffer data
+--------------------------------------------------------*/
+static void uart_irq_buf_reset( uart_irq_buf_type *irq_buf )
+{
+    irq_buf->num_bytes     = 0;
+    irq_buf->buf_ptr_cur   = irq_buf->buf_ptr_start;
+    irq_buf->error_overrun = false;
+}
+
+
