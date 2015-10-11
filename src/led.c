@@ -1,7 +1,7 @@
 #include "led.h"
 
 
-void led_init()
+void led_init( void )
 {
     // Enable GPIO Peripheral clock
     RCC_APB2PeriphClockCmd( BLINK_RCC_MASKx( BLINK_PORT_NUMBER ), ENABLE );

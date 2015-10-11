@@ -31,9 +31,6 @@ int main( int argc, char* argv[] )
     /*--------------------------------------------------------
     Local variables
     --------------------------------------------------------*/
-    uint16_t            count;      /* seconds counter              */
-//    char                cnt_str[ 20 ];
-//                                    /* temporary count string       */
     char                uart_rx_data[ 20 ];
                                     /* UART RX data buffer          */
     char                uart_tx_data[ 20 ];
@@ -43,14 +40,10 @@ int main( int argc, char* argv[] )
     /*--------------------------------------------------------
     Initialization
     --------------------------------------------------------*/
-    count = 0;
     timer_start();
     led_init();
     uart_init( UART1_BAUD_RATE );
     uart_test();
-
-//    uart_write_msg( "Press any key to continue..." );
-//    uart_wait_rx_ready();
 
     /*--------------------------------------------------------
     Forever loop
@@ -62,9 +55,6 @@ int main( int argc, char* argv[] )
 
 		blink_led_off();
         timer_sleep( BLINK_OFF_TICKS );
-
-//        sprintf( cnt_str, "%d", count );
-//        uart_write_msg( cnt_str );
 
         /*--------------------------------------------------------
         Attempt to read up to n bytes from the UART
@@ -81,8 +71,6 @@ int main( int argc, char* argv[] )
         --------------------------------------------------------*/
         sprintf( uart_tx_data, "read %d bytes: %s", bytes_read, uart_rx_data );
         uart_write_msg( uart_tx_data );
-
-        count++;
     }
 }
 

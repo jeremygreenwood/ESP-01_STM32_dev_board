@@ -33,6 +33,8 @@ typedef struct                      /* UART interrupt buffer data   */
     uint8_t            *buf_ptr_cur;/* pointer to current spot in buf*/
     uint16_t            buf_sz;     /* size of the buffer            */
     uint16_t            num_bytes;  /* number of bytes in the buffer */
+    bool                error_rx_full;
+                                    /* UART RX buffer full  		 */
     bool                error_overrun;
                                     /* out of memory error occurred  */
 } uart_irq_buf_type;
@@ -111,9 +113,10 @@ void uart_irq_setup( void )
     NVIC_InitTypeDef    NVIC_InitStructure;
 
     /*--------------------------------------------------------
-    Enable UART 1 interrupts
+    Enable UART 1 RX interrupt
+    NOTE: use the following line to enable TX interrupt:
+    USART_ITConfig( USART1, USART_IT_TXE, ENABLE );
     --------------------------------------------------------*/
-//    USART_ITConfig( USART1, USART_IT_TXE, ENABLE );
     USART_ITConfig( USART1, USART_IT_RXNE, ENABLE );
 
     /* Configure the NVIC Preemption Priority Bits */
@@ -133,6 +136,7 @@ void uart_irq_setup( void )
     s_uart_rx_buf_data.num_bytes     = 0;
     s_uart_rx_buf_data.buf_ptr_start = s_uart_rx_buf;
     s_uart_rx_buf_data.buf_ptr_cur   = s_uart_rx_buf;
+    s_uart_rx_buf_data.error_rx_full = false;
     s_uart_rx_buf_data.error_overrun = false;
 }
 
@@ -154,7 +158,7 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
     /*--------------------------------------------------------
     Check for UART errors
     --------------------------------------------------------*/
-    if( s_uart_rx_buf_data.error_overrun == true )
+    if( s_uart_rx_buf_data.error_rx_full == true )
     {
         /*--------------------------------------------------------
         Clear UART RX buffer data
@@ -164,7 +168,7 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
         /*--------------------------------------------------------
         Return error status
         --------------------------------------------------------*/
-        return ERR_UART_OVERRUN;
+        return ERR_UART_RX_BUF_FULL;
     }
 
     /*--------------------------------------------------------
@@ -396,7 +400,7 @@ void USART1_IRQHandler( void )
             /*--------------------------------------------------------
             Set overrun error
             --------------------------------------------------------*/
-            s_uart_rx_buf_data.error_overrun = true;
+            s_uart_rx_buf_data.error_rx_full = true;
         }
         else
         {
@@ -416,37 +420,6 @@ void USART1_IRQHandler( void )
             s_uart_rx_buf_data.num_bytes++;
         }
     }
-
-
-//    /*--------------------------------------------------------
-//    TESTING
-//    --------------------------------------------------------*/
-//
-//    /*--------------------------------------------------------
-//    Local static variables
-//    --------------------------------------------------------*/
-//    static uint16_t     tx_index = 0;
-//    static uint16_t     rx_index = 0;
-//
-//    if( USART_GetITStatus( USART1, USART_IT_TXE ) != RESET ) // Transmit the string in a loop
-//    {
-//        USART_SendData( USART1, StringLoop[ tx_index++ ] );
-//
-//        if( tx_index >= ( sizeof(StringLoop) - 1 ) )
-//        {
-//            tx_index = 0;
-//        }
-//    }
-//
-//    if( USART_GetITStatus( USART1, USART_IT_RXNE ) != RESET ) // Received characters modify string
-//    {
-//        StringLoop[ rx_index++ ] = USART_ReceiveData( USART1 );
-//
-//        if( rx_index >= ( sizeof(StringLoop) - 1 ) )
-//        {
-//            rx_index = 0;
-//        }
-//    }
 }
 
 
@@ -461,6 +434,7 @@ static void uart_irq_buf_reset( uart_irq_buf_type *irq_buf )
 {
     irq_buf->num_bytes     = 0;
     irq_buf->buf_ptr_cur   = irq_buf->buf_ptr_start;
+    irq_buf->error_rx_full = false;
     irq_buf->error_overrun = false;
 }
 
