@@ -7,6 +7,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "at_parser.h"
+#include "http_parser_interface.h"
 #include "uart.h"
 
 /**************************************************
@@ -59,12 +60,14 @@ int                     ret;
 at_cb_request_type      at_cb_req;
 
 /*---------------------------------- 
-Setup up at-parser
+Setup up at-parser & http-parser
 ---------------------------------- */
 at_init_parser(&at_state, at_memory, CB_REQ_NUM);
+http_init_parser();
+//http_test_parser();
 
 /* Setup uart */
-if( uart_open("/dev/ttyUSB0", 0) < 0 )
+if( uart_open(HW_SPECIFIC_PATH, 0) < 0 )
     {
     printf("Failed to open device\n");
     return(-1);
