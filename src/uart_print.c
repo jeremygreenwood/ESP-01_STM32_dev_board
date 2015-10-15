@@ -13,18 +13,14 @@
 
 #define UART_RX_BUF_SZ  1024        /* UART read buffer size        */
 
-/*--------------------------------------------------------
-TESTING
---------------------------------------------------------*/
-volatile char StringLoop[] = "The quick brown fox jumps over the lazy dog\r\n";
-
 /*----------------------------------------------------------------------
                             TYPES
 ----------------------------------------------------------------------*/
 
 /*--------------------------------------------------------
 TODO convert this to a ring buffer to eliminate possible
-overruns (hardware has only a single byte for RX/TX)
+overruns while processing the data with interrupts
+disabled (hardware has only a single byte for RX/TX)
 --------------------------------------------------------*/
 typedef struct                      /* UART interrupt buffer data   */
 {
@@ -57,9 +53,11 @@ static uart_irq_buf_type
 Local functions
 --------------------------------------------------------*/
 static void uart_irq_buf_reset( uart_irq_buf_type *irq_buf );
-static void uart_clock_setup( void );
-static void uart_irq_setup( void );
-static void uart_setup_gpio( uint32_t baud_rate );
+static void uart_setup_clock( void );
+static void uart_setup_gpio( void );
+static void uart_setup_irq( void );
+static void uart_setup_periph( uint32_t baud_rate );
+static void uart_wait_tx_ready( void );
 
 
 /*--------------------------------------------------------
@@ -67,17 +65,16 @@ Initialize UART 1
 --------------------------------------------------------*/
 void uart_init( uint32_t baud_rate )
 {
-    uart_clock_setup();
-    uart_irq_setup();
-    uart_setup_gpio( baud_rate );
+    uart_setup_clock();
+    uart_setup_gpio();
+    uart_setup_periph( baud_rate );
+    uart_setup_irq();
 }
 
 
 /*--------------------------------------------------------
 Get UART 1 RX data which has been read via interrupt.
 This has a signature similar to read() of unistd.h.
-NOTE: this functionality is not protected from interrupts
-and should be updated to use a ring buffer.
 --------------------------------------------------------*/
 uint16_t uart_read( void *buf, uint16_t bytes_req )
 {
@@ -86,12 +83,6 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
     --------------------------------------------------------*/
     uint16_t            bytes_ret;  /* number of bytes to copy      */
     uint16_t            bytes_rem;  /* number of bytes remaining    */
-
-    /*--------------------------------------------------------
-    Disable UART interrupts while processing.
-    NOTE: consider removing when implementing ring buffer.
-    --------------------------------------------------------*/
-    NVIC_DisableIRQ( USART1_IRQn );
 
     /*--------------------------------------------------------
     Check for UART errors
@@ -121,6 +112,12 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
         --------------------------------------------------------*/
         return ERR_UART_OVERRUN;
     }
+
+    /*--------------------------------------------------------
+    Disable UART interrupts while processing.
+    NOTE: consider removing when implementing ring buffer.
+    --------------------------------------------------------*/
+    NVIC_DisableIRQ( USART1_IRQn );
 
     /*--------------------------------------------------------
     Check if requested number of bytes can be returned
@@ -171,19 +168,6 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
     Return number of bytes copied to buffer
     --------------------------------------------------------*/
     return bytes_ret;
-}
-
-
-/*--------------------------------------------------------
-Wait for UART 1 transmit to become ready
---------------------------------------------------------*/
-void uart_wait_tx_ready( void )
-{
-    /*--------------------------------------------------------
-    This blocks waiting for the TX data register to become
-    empty
-    --------------------------------------------------------*/
-    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
 }
 
 
@@ -242,7 +226,9 @@ void uart_write_msg( char *msg )
 
 
 /*--------------------------------------------------------
-UART 1 ISR. This handles both RX and TX interrupts.
+UART 1 interrupt service routine.
+Note: This handles both RX and TX interrupts if
+configured. TX interrupts are currently disabled.
 --------------------------------------------------------*/
 void USART1_IRQHandler( void )
 {
@@ -287,53 +273,88 @@ Local functions
 --------------------------------------------------------*/
 
 /*--------------------------------------------------------
-Reset IRQ buffer data
+Reset interrupt buffer data with interrupt protection
 --------------------------------------------------------*/
 static void uart_irq_buf_reset( uart_irq_buf_type *irq_buf )
 {
+    NVIC_DisableIRQ( USART1_IRQn );
+
     irq_buf->num_bytes     = 0;
     irq_buf->buf_ptr_cur   = irq_buf->buf_ptr_start;
     irq_buf->error_rx_full = false;
     irq_buf->error_overrun = false;
+
+    NVIC_EnableIRQ( USART1_IRQn );
 }
 
 
 /*--------------------------------------------------------
 Setup processor clocks to use UART 1
 --------------------------------------------------------*/
-static void uart_clock_setup( void )
+static void uart_setup_clock( void )
 {
-    RCC_DeInit(); /* RCC system reset(for debug purpose)*/
-    RCC_HSEConfig( RCC_HSE_ON ); /* Enable HSE                         */
+	/* RCC system reset(for debug purpose)					*/
+    RCC_DeInit();
 
-    /* Wait till HSE is ready                                               */
+    /* Enable HSE                         					*/
+    RCC_HSEConfig( RCC_HSE_ON );
+
+    /* Wait till HSE is ready                          		*/
     while( RCC_GetFlagStatus( RCC_FLAG_HSERDY ) == RESET );
 
-    RCC_PCLK2Config( RCC_HCLK_Div1 ); /* PCLK2  = HCLK                  */
+    /* PCLK2  = HCLK                  						*/
+    RCC_PCLK2Config( RCC_HCLK_Div1 );
 
-    /* PLLCLK = 8MHz * 3 = 24 MHz                                           */
+    /* PLLCLK = 8MHz * 3 = 24 MHz                       	*/
     RCC_PLLConfig( 0x00010000, RCC_PLLMul_3 );
 
-    RCC_PLLCmd( ENABLE ); /* Enable PLL                     */
+    /* Enable PLL                     						*/
+    RCC_PLLCmd( ENABLE );
 
-    /* Wait till PLL is ready                                               */
+    /* Wait till PLL is ready                           	*/
     while( RCC_GetFlagStatus( RCC_FLAG_PLLRDY ) == RESET );
 
-    /* Select PLL as system clock source                                    */
+    /* Select PLL as system clock source                	*/
     RCC_SYSCLKConfig( RCC_SYSCLKSource_PLLCLK );
 
-    /* Wait till PLL is used as system clock source                         */
+    /* Wait till PLL is used as system clock source     	*/
     while( RCC_GetSYSCLKSource() != 0x08 );
 
-    /* Enable USART1 and GPIOA clock                                        */
+    /* Enable USART1 and GPIOA clock                    	*/
     RCC_APB2PeriphClockCmd( RCC_APB2Periph_USART1 | RCC_APB2Periph_GPIOA, ENABLE );
+}
+
+
+/*--------------------------------------------------------
+Setup UART 1 input/output pins
+--------------------------------------------------------*/
+static void uart_setup_gpio( void )
+{
+    /*--------------------------------------------------------
+    Local variables
+    --------------------------------------------------------*/
+    GPIO_InitTypeDef    GPIO_InitStructure;
+
+    /* Enable GPIOA clock                                  	*/
+    RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOA, ENABLE );
+
+    /* Configure USART1 Rx (PA10) as input floating         */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_Init( GPIOA, &GPIO_InitStructure );
+
+    /* Configure USART1 Tx (PA9) as alternate function push-pull */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+    GPIO_Init( GPIOA, &GPIO_InitStructure );
 }
 
 
 /*--------------------------------------------------------
 Setup UART 1 interrupts
 --------------------------------------------------------*/
-static void uart_irq_setup( void )
+static void uart_setup_irq( void )
 {
     /*--------------------------------------------------------
     Local variables
@@ -347,10 +368,10 @@ static void uart_irq_setup( void )
     --------------------------------------------------------*/
     USART_ITConfig( USART1, USART_IT_RXNE, ENABLE );
 
-    /* Configure the NVIC Preemption Priority Bits */
+    /* Configure the NVIC Preemption Priority Bits 			*/
     NVIC_PriorityGroupConfig( NVIC_PriorityGroup_0 );
 
-    /* Enable the USART 1 Interrupt */
+    /* Enable the USART 1 Interrupt 						*/
     NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -358,7 +379,7 @@ static void uart_irq_setup( void )
     NVIC_Init( &NVIC_InitStructure );
 
     /*--------------------------------------------------------
-    Setup UART RX state data
+    Setup UART RX buffer state data
     --------------------------------------------------------*/
     s_uart_rx_buf_data.buf_sz        = UART_RX_BUF_SZ;
     s_uart_rx_buf_data.num_bytes     = 0;
@@ -372,30 +393,16 @@ static void uart_irq_setup( void )
 /*--------------------------------------------------------
 Configure UART 1 baud rate, GPIO, etc
 --------------------------------------------------------*/
-static void uart_setup_gpio( uint32_t baud_rate )
+static void uart_setup_periph( uint32_t baud_rate )
 {
     /*--------------------------------------------------------
     Local variables
     --------------------------------------------------------*/
-    GPIO_InitTypeDef    GPIO_InitStructure;
     USART_InitTypeDef   USART_InitStructure;
 
-    /* Enable GPIOA clock                                                   */
-    RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOA, ENABLE );
-
-    /* Configure USART1 Rx (PA10) as input floating                         */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-    GPIO_Init( GPIOA, &GPIO_InitStructure );
-
-    /* Configure USART1 Tx (PA9) as alternate function push-pull            */
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-    GPIO_Init( GPIOA, &GPIO_InitStructure );
-
-    /* USART1 configured as follow:
-     - BaudRate = 115200 baud
+    /*--------------------------------------------------------
+    UART 1 is configured as follows:
+     - BaudRate = baud_rate parameter
      - Word Length = 8 Bits
      - One Stop Bit
      - No parity
@@ -404,9 +411,9 @@ static void uart_setup_gpio( uint32_t baud_rate )
      - USART Clock disabled
      - USART CPOL: Clock is active low
      - USART CPHA: Data is captured on the middle
-     - USART LastBit: The clock pulse of the last data bit is not output to
-     the SCLK pin
-     */
+     - USART LastBit: The clock pulse of the last data bit is
+       not output to the SCLK pin
+    --------------------------------------------------------*/
     USART_InitStructure.USART_BaudRate = baud_rate;
     USART_InitStructure.USART_WordLength = USART_WordLength_8b;
     USART_InitStructure.USART_StopBits = USART_StopBits_1;
@@ -415,6 +422,18 @@ static void uart_setup_gpio( uint32_t baud_rate )
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
     USART_Init( USART1, &USART_InitStructure );
     USART_Cmd( USART1, ENABLE );
+}
+
+
+/*--------------------------------------------------------
+Wait for UART 1 transmit to become ready
+--------------------------------------------------------*/
+static void uart_wait_tx_ready( void )
+{
+    /*--------------------------------------------------------
+    Block waiting for the TX data register to become empty
+    --------------------------------------------------------*/
+    while( USART_GetFlagStatus( USART1, USART_FLAG_TXE ) == RESET );
 }
 
 

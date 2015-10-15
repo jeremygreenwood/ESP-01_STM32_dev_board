@@ -19,16 +19,8 @@ TODO add other UART releated errors (e.g. framing error)
 
 void uart_init( uint32_t baud_rate );
 uint16_t uart_read( void *buf, uint16_t bytes );
-void uart_test( void );
-void uart_wait_rx_ready( void );
-void uart_wait_tx_ready( void );
-/*--------------------------------------------------------
-TODO change to uart_write() with signature similar to write()
---------------------------------------------------------*/
 uint16_t uart_write( const void *buf, uint16_t bytes );
-void uart_write_buf( char *buf, uint16_t count );
 void uart_write_byte( uint8_t byte );
 void uart_write_msg( char *msg );
-void uart_write_str( char *str );
 
 #endif

@@ -58,7 +58,7 @@ int main( int argc, char* argv[] )
         /*--------------------------------------------------------
         Attempt to read up to n bytes from the UART
         --------------------------------------------------------*/
-        bytes_read = uart_read( &uart_rx_data, 3 );
+        bytes_read = uart_read( &uart_rx_data, 15 );
 
         /*--------------------------------------------------------
         Null terminate data read
