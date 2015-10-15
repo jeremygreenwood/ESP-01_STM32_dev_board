@@ -31,11 +31,11 @@ int main( int argc, char* argv[] )
     /*--------------------------------------------------------
     Local variables
     --------------------------------------------------------*/
+    uint16_t            bytes_read; /* number of UART bytes read    */
     char                uart_rx_data[ 20 ];
                                     /* UART RX data buffer          */
     char                uart_tx_data[ 20 ];
                                     /* UART TX data buffer          */
-    uint16_t            bytes_read; /* number of UART bytes read    */
 
     /*--------------------------------------------------------
     Initialization

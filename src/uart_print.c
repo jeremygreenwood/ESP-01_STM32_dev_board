@@ -148,10 +148,10 @@ uint16_t uart_read( void *buf, uint16_t bytes_req )
     Move any remaining buffer data which needs to be copied
     back to the beginning of the buffer. This does nothing if
     bytes remaining is zero.
-    NOTE: this will not be necessary once a ring buffer is
+    NOTE: this will not be necessary if a ring buffer is
     implemented.
     --------------------------------------------------------*/
-    memmove( s_uart_rx_buf_data.buf_ptr_start, s_uart_rx_buf_data.buf_ptr_cur, bytes_rem );
+    memmove( s_uart_rx_buf_data.buf_ptr_start, s_uart_rx_buf_data.buf_ptr_start + bytes_ret, bytes_rem );
 
     /*--------------------------------------------------------
     Update buffer data
