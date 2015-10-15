@@ -43,7 +43,6 @@ int main( int argc, char* argv[] )
     timer_start();
     led_init();
     uart_init( UART1_BAUD_RATE );
-    uart_test();
 
     /*--------------------------------------------------------
     Forever loop
