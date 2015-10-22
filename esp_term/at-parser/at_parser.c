@@ -43,43 +43,6 @@ char AT_TXT_send_ok[]     =   "SEND OK";
 /**************************************************
     Types
 **************************************************/
-typedef uint8_t at_token_enum;
-enum
-    {
-    /* AT CMDs  */
-                        AT_TOK_CMDS_START = 0,
-/*  AT_CMD_NO_CMD   */  AT_TOK_NO_CMD = 0,
-/*  AT_CMD_RST      */  AT_TOK_RST,  
-/*  AT_CMD_AT       */  AT_TOK_AT,  
-/*  AT_CMD_GMR      */  AT_TOK_GMR,
-/*  AT_CMD_GSLP     */  AT_TOK_GSLP,
-/*  AT_CMD_ATE      */  AT_TOK_ATE,
-/*  AT_CMD_CWMODE   */  AT_TOK_CWMODE,
-/*  AT_CMD_CWJAP    */  AT_TOK_CWJAP,
-/*  AT_CMD_CWLAP    */  AT_TOK_CWLAP,
-/*  AT_CMD_CWQAP    */  AT_TOK_CWQAP,
-/*  AT_CMD_CWSAP    */  AT_TOK_CWSAP,
-/*  AT_CMD_CWDHCP   */  AT_TOK_CWDHCP,
-/*  AT_CMD_CIPAP    */  AT_TOK_CIPAP,
-/*  AT_CMD_CIPSTATUS*/  AT_TOK_CIPSTATUS,
-/*  AT_CMD_CIPSTART */  AT_TOK_CIPSTART,
-/*  AT_CMD_CIPSTA   */  AT_TOK_CIPSTA,
-/*  AT_CMD_CIPSEND  */  AT_TOK_CIPSEND,
-/*  AT_CMD_CIPCLOSE */  AT_TOK_CIPCLOSE,
-/*  AT_CMD_CIFSR    */  AT_TOK_CIFSR,
-/*  AT_CMD_CIPMUX   */  AT_TOK_CIPMUX,
-/*  AT_CMD_CIPSERVER*/  AT_TOK_CIPSERVER,
-/*  AT_CMD_IPD      */  AT_TOK_IPD,
-                        AT_TOK_CMDS_END,
-                        AT_TOK_INVALID,
-    /* AT Responses  */
-    AT_TOK_no_this_fun,
-    AT_TOK_ok,
-    AT_TOK_error,
-    AT_TOK_no_change,
-    AT_TOK_ready,
-    AT_TOK_send_ok,
-    };
 
 /**************************************************
     Variables
@@ -110,51 +73,25 @@ at_cmd_to_text_type _at_cmds[] =
     { AT_CMD_CIFSR,     AT_TXT_CIFSR      },
     { AT_CMD_CIPMUX,    AT_TXT_CIPMUX     },
     { AT_CMD_CIPSERVER, AT_TXT_CIPSERVER  },
-    { AT_CMD_IPD,       AT_TXT_IPD        }
+    { AT_CMD_IPD,       AT_TXT_IPD        },
+/* AT Responses  */
+    { AT_CMD_no_this_fun, AT_TXT_no_this_fun  },
+    { AT_CMD_ok,        AT_TXT_ok          },
+    { AT_CMD_error,     AT_TXT_error       },
+    { AT_CMD_no_change, AT_TXT_no_change   },
+    { AT_CMD_ready,     AT_TXT_ready       },
+    { AT_CMD_send_ok,   AT_TXT_send_ok     },
     };
 at_cmd_to_text_type *at_cmds = _at_cmds;
-
-at_cmd_to_text_type _at_toks[] =
-    {
-    { AT_TOK_no_this_fun,   AT_TXT_no_this_fun  },
-    { AT_TOK_ok,            AT_TXT_ok           },
-    { AT_TOK_error,         AT_TXT_error        },
-    { AT_TOK_no_change,     AT_TXT_no_change    },
-    { AT_TOK_ready,         AT_TXT_ready        },
-    { AT_TOK_send_ok,       AT_TXT_send_ok      },
-    { AT_TOK_NO_CMD,        AT_TXT_NO_CMD       },
-    { AT_TOK_RST,           AT_TXT_RST          },
-    { AT_TOK_AT,            AT_TXT_AT           },
-    { AT_TOK_GMR,           AT_TXT_GMR          },
-    { AT_TOK_GSLP,          AT_TXT_GSLP         },
-    { AT_TOK_ATE,           AT_TXT_ATE          },
-    { AT_TOK_CWMODE,        AT_TXT_CWMODE       },
-    { AT_TOK_CWJAP,         AT_TXT_CWJAP        },
-    { AT_TOK_CWLAP,         AT_TXT_CWLAP        },
-    { AT_TOK_CWQAP,         AT_TXT_CWQAP        },
-    { AT_TOK_CWSAP,         AT_TXT_CWSAP        },
-    { AT_TOK_CWDHCP,        AT_TXT_CWDHCP       },
-    { AT_TOK_CIPSTATUS,     AT_TXT_CIPSTATUS    },
-    { AT_TOK_CIPSTA,        AT_TXT_CIPSTA       },
-    { AT_TOK_CIPAP,         AT_TXT_CIPAP        },
-    { AT_TOK_CIPSTART,      AT_TXT_CIPSTART     },
-    { AT_TOK_CIPSEND,       AT_TXT_CIPSEND      },
-    { AT_TOK_CIPCLOSE,      AT_TXT_CIPCLOSE     },
-    { AT_TOK_CIFSR,         AT_TXT_CIFSR        },
-    { AT_TOK_CIPMUX,        AT_TXT_CIPMUX       },
-    { AT_TOK_CIPSERVER,     AT_TXT_CIPSERVER    },
-    { AT_TOK_IPD,           AT_TXT_IPD          }
-    };
-
 
 /**************************************************
     Prototypes
 **************************************************/
 int call_callback(at_parser_state_type *p, at_return_type *at_ret);
-at_token_enum any_match(at_cmd_to_text_type *tok, int tok_num, char *in, int in_size);
+at_cmd_enum any_match(at_cmd_to_text_type *tok, int tok_num, char *in, int in_size);
 int match( char *tok, char *in, int in_size);
 int find_token( at_cmd_to_text_type *tok, int tok_num, 
-                char *in, int in_size, at_token_enum *found_tok);
+                char *in, int in_size, at_cmd_enum *found_tok);
 
 /**************************************************
     Callback Prototypes
@@ -189,65 +126,66 @@ int             idx;
 int             ret;
 at_return_type  at_ret;
 int             found;
-at_token_enum   token; 
+at_cmd_enum   token; 
 int             raw_start;
 int             cb_ready;
 
 // printf( "at_process[%d]: --%s--\n", in_size, in );
 
+raw_start = 0;
 idx = 0;
 ret = 0;
 cb_ready = 0;
 do
     {
-    found = find_token( _at_toks, cnt_of_array(_at_toks), &in[idx], in_size - idx, &token );
+    found = find_token( _at_cmds, cnt_of_array(_at_cmds), &in[idx], in_size - idx, &token );
 
     if( found >= 0 )
         {
         idx += found;
         switch( token )
             {
-            case AT_TOK_no_this_fun:
+            case AT_CMD_no_this_fun:
                 at_ret.status = AT_STATUS_ERR;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_no_this_fun );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
                 break;
-            case AT_TOK_send_ok:
+            case AT_CMD_send_ok:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_send_ok );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
                 break;
-            case AT_TOK_ready:
+            case AT_CMD_ready:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_ready );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
                 break;
-            case AT_TOK_ok:
+            case AT_CMD_ok:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_ok );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
-                if(at_ret.cmd == AT_TOK_RST)
+                if(at_ret.cmd == AT_CMD_RST)
                     {
                     cb_ready = 0;
                     at_ret.raw_size = 0;
                     }
                 break;
-            case AT_TOK_error:
+            case AT_CMD_error:
                 at_ret.status = AT_STATUS_ERR;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_error );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
                 break;
-            case AT_TOK_no_change:
+            case AT_CMD_no_change:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += strlen( AT_TXT_no_change );
@@ -255,22 +193,35 @@ do
                 at_ret.status = AT_STATUS_OK;
                 cb_ready = 1;
                 break;
+            case AT_CMD_CIPSEND:
+                at_ret.cmd = token;
+                raw_start = idx;
+                idx += strlen( at_get_cmd_txt( token ) );
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += 10;
+                at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
+                break;
+            case AT_CMD_IPD:
+                    // fix this.
+                at_ret.cmd = token;
+                raw_start = idx;
+                idx += strlen( at_get_cmd_txt( token ) );
+                at_ret.status = AT_STATUS_OK;
+                at_ret.raw = &in[raw_start];
+                idx += 10;
+                at_ret.raw_size = idx - raw_start;
+                cb_ready = 1;
+                break;
             default:
-                if( token > AT_TOK_CMDS_START
-                 && token < AT_TOK_CMDS_END )
+                if( token > AT_CMD_CMDS_START
+                 && token < AT_CMD_CMDS_END )
                     {
                     /*  ERROR - token is not a cmd */  
                     at_ret.cmd = token;
                     raw_start = idx;
                     idx += strlen( at_get_cmd_txt( token ) );
-                    if( token == AT_CMD_CIPSEND )
-                        {
-                        at_ret.status = AT_STATUS_OK;
-                        at_ret.raw = &in[raw_start];
-                        idx += 10;
-                        at_ret.raw_size = idx - raw_start;
-                        cb_ready = 1;
-                        }
                     }
                 else
                     {
@@ -304,7 +255,7 @@ int find_token
     int                     tok_num,
     char                   *in,
     int                     in_size,
-    at_token_enum          *found_tok
+    at_cmd_enum          *found_tok
     )
 {
 int             i;
@@ -315,7 +266,7 @@ ret = -1;
 for( i = 0; i < in_size; i++ )
     {
     *found_tok = any_match( tok, tok_num, &in[i], in_size - i);
-    if( *found_tok != AT_TOK_INVALID )
+    if( *found_tok != AT_CMD_INVALID )
         {
         ret = i;
         break;
@@ -328,7 +279,7 @@ return( ret );
 /**************************************************
     any_match
 **************************************************/
-at_token_enum any_match
+at_cmd_enum any_match
     (
     at_cmd_to_text_type    *tok,
     int                     tok_num,
@@ -337,9 +288,9 @@ at_token_enum any_match
     )
 {
 int             i;
-at_token_enum   found_match;
+at_cmd_enum   found_match;
 
-found_match = AT_TOK_INVALID;
+found_match = AT_CMD_INVALID;
 
 for( i =  0; i < tok_num; i++ )
     {
@@ -386,6 +337,8 @@ if( found )
      && in[tok_size] != '='
      && in[tok_size] != '\"'
      && in[tok_size] != ','
+     && in[tok_size] != '0'
+     && in[tok_size] != '1'
      && in_size != tok_size )
         {
         found = 0;

@@ -14,6 +14,7 @@ typedef uint8_t at_cmd_enum;
 enum
     {
     AT_CMD_NO_CMD,
+    AT_CMD_CMDS_START,
     AT_CMD_RST,
     AT_CMD_AT,
     AT_CMD_GMR,
@@ -29,13 +30,23 @@ enum
     AT_CMD_CIPSTATUS,
     AT_CMD_CIPSTART,
     AT_CMD_CIPSTA,
-    AT_CMD_CIPSEND,
     AT_CMD_CIPCLOSE,
     AT_CMD_CIFSR,
     AT_CMD_CIPMUX,
     AT_CMD_CIPSERVER,
+    /* AT Normal cmds end  */
+    AT_CMD_CMDS_END,
+    /* AT special cmds  */
+    AT_CMD_CIPSEND,
     AT_CMD_IPD,
-    AT_CMD_send_ok
+    /* AT Responses  */
+    AT_CMD_no_this_fun,
+    AT_CMD_ok,
+    AT_CMD_error,
+    AT_CMD_no_change,
+    AT_CMD_ready,
+    AT_CMD_send_ok,
+    AT_CMD_INVALID,
     };
 
 typedef uint8_t at_status_enum;
