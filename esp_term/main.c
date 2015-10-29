@@ -76,10 +76,10 @@ if( uart_open(HW_SPECIFIC_PATH, 0) < 0 )
 /*---------------------------------- 
 Setup callback for setup
 ---------------------------------- */
-at_cb_req.cmd = AT_CMD_ATE;
+at_cb_req.cmd = AT_CMD_RST;
 at_cb_req.cb = cb_setup;
 at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
-//ret = at_submit_cb(&at_state, &at_cb_req);
+ret = at_submit_cb(&at_state, &at_cb_req);
 
 /*---------------------------------- 
 Setup callback for HTTP requests
@@ -92,8 +92,8 @@ ret = at_submit_cb(&at_state, &at_cb_req);
 /*---------------------------------- 
 Send reset cmd to start setup sequence
 ---------------------------------- */
-// at_send_cmd(AT_CMD_RST);
-at_send_cmd_with_text(AT_CMD_ATE, "1", sizeof("0")); 
+at_send_cmd(AT_CMD_RST);
+// at_send_cmd_with_text(AT_CMD_ATE, "1", sizeof("0")); 
 
 /*---------------------------------- 
 Do main forever

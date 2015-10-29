@@ -200,8 +200,9 @@ do
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += 10;
+                idx += atoi(&in[idx + 3]) - 1;
                 at_ret.raw_size = idx - raw_start;
-                cb_ready = 1;
+                // cb_ready = 1;
                 break;
             case AT_CMD_IPD:
                     // fix this.
@@ -211,8 +212,11 @@ do
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
                 idx += 10;
+                
+                idx += atoi(&in[raw_start + 7]) - 1;
+
                 at_ret.raw_size = idx - raw_start;
-                cb_ready = 1;
+                // cb_ready = 1;
                 break;
             default:
                 if( token > AT_CMD_CMDS_START
@@ -474,6 +478,14 @@ int             found;
 
 found = 0;
 ret = 0;
+
+if( at_ret->cmd == AT_CMD_NO_CMD )
+    {
+    printf("Problem. Calling callback with bad cmd. cmd: %u\n",
+                    at_ret->cmd);
+    return( ret );
+    }
+
 for( i = 0; i < p->req_num; i++ )
     {
     if( p->requests[i].cmd == at_ret->cmd )
