@@ -4,6 +4,7 @@
 #include "at_parser.h"
 #include "uart.h"
 #include <stdio.h>
+#include "dbg_log.h"
 
 /**************************************************
     Defines & Memory Constants
@@ -39,6 +40,7 @@ char AT_TXT_error[]       =   "ERROR";
 char AT_TXT_no_change[]   =   "no change";
 char AT_TXT_ready[]       =   "ready";
 char AT_TXT_send_ok[]     =   "SEND OK";
+char AT_TXT_wrong_syntax[] =  "wrong syntax";
 
 /**************************************************
     Types
@@ -81,6 +83,7 @@ at_cmd_to_text_type _at_cmds[] =
     { AT_CMD_no_change, AT_TXT_no_change   },
     { AT_CMD_ready,     AT_TXT_ready       },
     { AT_CMD_send_ok,   AT_TXT_send_ok     },
+    { AT_CMD_wrong_syntax, AT_TXT_wrong_syntax },
     };
 at_cmd_to_text_type *at_cmds = _at_cmds;
 
@@ -130,7 +133,7 @@ at_cmd_enum   token;
 int             raw_start;
 int             cb_ready;
 
-// printf( "at_process[%d]: --%s--\n", in_size, in );
+// dbg_log( "at_process[%d]: --%s--\n", in_size, in );
 
 raw_start = 0;
 idx = 0;
@@ -177,6 +180,12 @@ do
                     cb_ready = 0;
                     at_ret.raw_size = 0;
                     }
+                if(at_ret.cmd == AT_CMD_CIPSEND)
+                    {
+                    // idx += atoi(&in[idx + 3]) - 1;
+                    // at_ret.raw_size = idx - raw_start;
+                    // cb_ready = 1;
+                    }
                 break;
             case AT_CMD_error:
                 at_ret.status = AT_STATUS_ERR;
@@ -184,6 +193,14 @@ do
                 idx += strlen( AT_TXT_error );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
+                if(at_ret.cmd == AT_CMD_CIPSEND)
+                    {
+                    // idx += atoi(&in[idx + 3]) - 1;
+                    // at_ret.raw_size = idx - raw_start;
+                    // cb_ready = 1;
+                    }
+                break;
+            case AT_CMD_wrong_syntax:
                 break;
             case AT_CMD_no_change:
                 at_ret.status = AT_STATUS_OK;
@@ -199,20 +216,20 @@ do
                 idx += strlen( at_get_cmd_txt( token ) );
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
-                idx += 10;
-                idx += atoi(&in[idx + 3]) - 1;
+                // idx += 10;
+                // idx += atoi(&in[idx + 3]) - 1;
                 at_ret.raw_size = idx - raw_start;
                 // cb_ready = 1;
                 break;
             case AT_CMD_IPD:
-                    // fix this.
                 at_ret.cmd = token;
                 raw_start = idx;
                 idx += strlen( at_get_cmd_txt( token ) );
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
+
+                // Only do this if it's OK, so wait..
                 idx += 10;
-                
                 idx += atoi(&in[raw_start + 7]) - 1;
 
                 at_ret.raw_size = idx - raw_start;
@@ -222,14 +239,13 @@ do
                 if( token > AT_CMD_CMDS_START
                  && token < AT_CMD_CMDS_END )
                     {
-                    /*  ERROR - token is not a cmd */  
                     at_ret.cmd = token;
                     raw_start = idx;
                     idx += strlen( at_get_cmd_txt( token ) );
                     }
                 else
                     {
-                    printf("Bad enum or cmd received: %u\n", token);
+                    dbg_log("Bad enum or cmd received: %u\n", token);
                     /* ERROR  */
                     }
                 break;
@@ -481,7 +497,7 @@ ret = 0;
 
 if( at_ret->cmd == AT_CMD_NO_CMD )
     {
-    printf("Problem. Calling callback with bad cmd. cmd: %u\n",
+    dbg_log("Problem. Calling callback with bad cmd. cmd: %u\n",
                     at_ret->cmd);
     return( ret );
     }
@@ -493,7 +509,7 @@ for( i = 0; i < p->req_num; i++ )
         found = 1;
         if( p->requests[i].cb == NULL)
             {
-            printf("Problem. Calling a NULL callback, i: %d, cmd: %u\n",
+            dbg_log("Problem. Calling a NULL callback, i: %d, cmd: %u\n",
                     i, at_ret->cmd);
             }
         else
@@ -511,7 +527,7 @@ for( i = 0; i < p->req_num; i++ )
     }
 if( !found )
     {
-    printf("Didn't find callback for:  %s\n", at_ret->raw);
+    dbg_log("Didn't find callback for:  %s\n", at_ret->raw);
     }
 
 return(ret);

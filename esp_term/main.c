@@ -9,6 +9,7 @@
 #include "at_parser.h"
 #include "http_parser_interface.h"
 #include "uart.h"
+#include "dbg_log.h"
 
 /**************************************************
     Defines & Memory Consts
@@ -17,8 +18,18 @@
 #define MAIN_BUF_SIZE 1024
 #define CB_REQ_NUM 30
 
-char resp[] = 
-"HTTP/1.1 200 OK\nDate: Fri, 11 Fri 2015 06:25:59 GMT\nContent-Type: text/html\nContent-Length: %u\n\n<html><body><h1>Hello glorious world!</h1>(all the things I needed to say)</body></html>\n\n";
+char resp_http_ok[] = 
+"HTTP/1.1 200 OK\n"                                 \
+"Date: Fri, 11 Fri 2015 06:25:59 GMT\n"             \
+"Content-Type: text/html\nContent-Length: %u\n\n%s";
+
+char resp_http_body[] = 
+"<html><body>"                                      \
+"<h1>Hello glorious world!</h1>"                    \
+"<h2>You're id: %d</h2>"                            \
+"<h3>Here's all the raw data:\n</h3>"               \
+"<h5>%s\n</h5>"             \
+"</body></html>\n\n";
 
 /**************************************************
     Types
@@ -69,7 +80,7 @@ http_init_parser();
 /* Setup uart */
 if( uart_open(HW_SPECIFIC_PATH, 0) < 0 )
     {
-    printf("Failed to open device\n");
+    dbg_log("Failed to open device\n");
     return(-1);
     }
 
@@ -105,7 +116,7 @@ for(;;)
     read_ret = uart_read(&main_buf[buf_curr], MAIN_BUF_SIZE - buf_curr);
     if(read_ret > 0 )
         {
-        // printf("uart_read[%d]: --%s--\n", read_ret, main_buf);
+        // dbg_log("uart_read[%d]: --%s--\n", read_ret, main_buf);
         buf_curr += read_ret;
         }
     if( buf_curr > 0 )
@@ -131,23 +142,26 @@ int cb_ipd
 Local Variables
 ---------------------------------- */
 at_cb_request_type      at_cb_req;
-char                    send_buf[512];
+char                    cmd_buf[512];
+char                    hdr_buf[1024];
+char                    body_buf[1024];
 static int              id;
+int                     cont_len;
 int                     i;
 
 /*---------------------------------- 
 Print
 ---------------------------------- */
 
-printf("Got cb_ipd():: cmd: %d, status: %d, raw[%d]:\n--",
+dbg_log("Got cb_ipd():: cmd: %d, status: %d, raw_size: %d\n",
         ret->cmd, ret->status, ret->raw_size); 
 i = 0;
 do 
     {
-    printf("%s", &ret->raw[i]);
+    dbg_log("%s", &ret->raw[i]);
     i += strlen(&ret->raw[i]) + 1;
     }while( i <= ret->raw_size );
-printf("--\n");
+dbg_log("--\n");
 
 /*---------------------------------- 
 Setup callback, and write cmd out
@@ -160,23 +174,48 @@ switch( ret->cmd )
         at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
         at_submit_cb(&at_state, &at_cb_req);
         id = strtol( &ret->raw[5], NULL, 10);
-        printf( "Sending HTML to %d\n", id );
-        sprintf(send_buf, "=%d,%d", id, strlen(resp));
-        at_send_cmd_with_text(AT_CMD_CIPSEND, send_buf, strlen(send_buf));
+        dbg_log( "Sending HTML to %d\n", id );
+
+        sprintf(body_buf, resp_http_body, id, ret->raw);
+        sprintf(hdr_buf, resp_http_ok, strlen(body_buf), body_buf);
+        cont_len = strlen(hdr_buf);
+        sprintf(cmd_buf, "=%d,%d", id, cont_len);
+        
+        // dbg_log( "cmd_buf[%u]: %s\n\n", strlen(cmd_buf), cmd_buf );
+        // dbg_log( "hdr_buf[%u]: %s\n\n", cont_len, hdr_buf );
+       
+        at_send_cmd_with_text(AT_CMD_CIPSEND, cmd_buf, strlen(cmd_buf));
         sleep(1);
-        uart_write(resp, strlen(resp));
+        uart_write(hdr_buf, strlen(hdr_buf));
+        
+        /*
+This uart write needs to be moved into the next cb.
+How to determine if the cmd for CIPSEND means we just 
+sent what was in the uart and is OK, or we got the send 
+cmd and are ready for you to write it to the uart.
+
+            */
+
+
         break;
     case AT_CMD_CIPSEND:
-        at_cb_req.cmd = AT_CMD_CIPCLOSE;
-        at_cb_req.cb = cb_ipd;
-        at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
-        at_submit_cb(&at_state, &at_cb_req);
-        printf( "Sending close cmd to %d\n", id );
-        sprintf(send_buf, "=%d", id);
-        at_send_cmd_with_text(AT_CMD_CIPCLOSE, send_buf, 2);
+        if( ret->status == AT_STATUS_OK )
+            {
+            at_cb_req.cmd = AT_CMD_CIPCLOSE;
+            at_cb_req.cb = cb_ipd;
+            at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
+            at_submit_cb(&at_state, &at_cb_req);
+            dbg_log( "Sending close cmd to %d\n", id );
+            sprintf(cmd_buf, "=%d", id);
+            at_send_cmd_with_text(AT_CMD_CIPCLOSE, cmd_buf, 2);
+            }
+        else
+            {
+            dbg_log( "Send request returned error, client ID: %d\n", id );
+            }
         break;
     case AT_CMD_CIPCLOSE:
-        printf("Done with Send, Closed it.\n");
+        dbg_log("Done with Send, Closed it.\n");
         break;
     }
 
@@ -195,27 +234,27 @@ int cb_setup
 Local Variables
 ---------------------------------- */
 at_cb_request_type      at_cb_req;
-int                     i;
+// int                     i;
 
 /*---------------------------------- 
 Print
 ---------------------------------- */
-printf("Got cb_at():: cmd: %d, status: %d, raw[%d]:\n--",
+dbg_log("Got cb_at():: cmd: %d, status: %d, raw_size: %d:\n--",
         ret->cmd, ret->status, ret->raw_size); 
-i = 0;
-do 
-    {
-    printf("%s", &ret->raw[i]);
-    i += strlen(&ret->raw[i]) + 1;
-    }while( i <= ret->raw_size );
-printf("--\n");
+//i = 0;
+//do 
+//    {
+//    dbg_log("%s", &ret->raw[i]);
+//    i += strlen(&ret->raw[i]) + 1;
+//    }while( i <= ret->raw_size );
+//dbg_log("--\n");
 
 /*---------------------------------- 
 Error
 ---------------------------------- */
 if( ret->status != AT_STATUS_OK )
     {
-    printf( "Failed on cmd: %s.  Bailing.\n",
+    dbg_log( "Failed on cmd: %s.  Bailing.\n",
         at_get_cmd_txt(ret->cmd));
     return(0);
     }
@@ -262,7 +301,7 @@ switch( ret->cmd )
         at_send_cmd_with_text(  AT_CMD_CIPSERVER, "=1,5000", sizeof("=1,5000"));
         break;
     case AT_CMD_CIPSERVER:
-        printf("All done\n");
+        dbg_log("Setup Complete\n");
         //at_cb_req.cmd = AT_CMD_CIPAP;
         //at_cb_req.cb = cb_setup;
         //at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
@@ -270,7 +309,8 @@ switch( ret->cmd )
         //at_send_cmd_with_text(  AT_CMD_CIPAP, "=\"192.168.5.1\"", sizeof("=\"192.168.5.1\""));
         break;
     case AT_CMD_CIPAP:
-        printf("All done\n");
+        dbg_log("All done, CIPAP\n");
+        break;
     }
     
 return(0);

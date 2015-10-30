@@ -46,6 +46,7 @@ enum
     AT_CMD_no_change,
     AT_CMD_ready,
     AT_CMD_send_ok,
+    AT_CMD_wrong_syntax,
     AT_CMD_INVALID,
     };
 
