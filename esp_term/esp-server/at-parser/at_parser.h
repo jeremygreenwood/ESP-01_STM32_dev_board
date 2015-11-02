@@ -114,6 +114,13 @@ void at_send_cmd(at_cmd_enum cmd);
 void at_send_cmd_with_text(at_cmd_enum cmd, char *in, int in_size);
 char *at_get_cmd_txt(at_cmd_enum cmd);
 
+#define at_quick_submit( at, cmd, cb, standing )        \
+    do                                                  \
+    {                                                   \
+    at_cb_request_type req = { cmd, cb, standing };     \
+    at_submit_cb(at, &req);                             \
+    }while(0)                                           \
+
 
 /**************************************************
     Variables

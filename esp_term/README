@@ -1,0 +1,19 @@
+Files:
+    main.c          - where all the action starts
+    prj             - all project specific files go under this directory
+      callbacks
+        at_cb.c     - how to handle all at cmd callbacks (this may get moved to the esp-server)
+        key_cb.c    - callbacks for html key instertion operations, used by the template engine
+        cb.h        - declarations for all callbacks
+      dbg_log.h     - defines for logging, if able
+      template      - all web related content, html, css, js, etc
+      uart          - project specific uart functionality to the esp
+
+    esp-server      - a web server for the esp-01 module, supposed to be generic for lots of different projects
+      at-parser     - all code for parsing AT cmds from the esp module
+      html-eng      - a templating engine, used with callbacks to format html
+      http-parser   - a http parser to deal with all http headers, GET, POST, etc
+
+    
+
+

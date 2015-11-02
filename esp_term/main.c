@@ -11,6 +11,8 @@
 #include "uart.h"
 #include "dbg_log.h"
 
+#include "templates.h"
+
 /**************************************************
     Defines & Memory Consts
 **************************************************/
@@ -68,14 +70,12 @@ int                     read_ret;
 int                     at_processed;
 int                     buf_curr;
 int                     ret;
-at_cb_request_type      at_cb_req;
 
 /*---------------------------------- 
 Setup up at-parser & http-parser
 ---------------------------------- */
 at_init_parser(&at_state, at_memory, CB_REQ_NUM);
 http_init_parser();
-//http_test_parser();
 
 /* Setup uart */
 if( uart_open(HW_SPECIFIC_PATH, 0) < 0 )
@@ -87,18 +87,12 @@ if( uart_open(HW_SPECIFIC_PATH, 0) < 0 )
 /*---------------------------------- 
 Setup callback for setup
 ---------------------------------- */
-at_cb_req.cmd = AT_CMD_RST;
-at_cb_req.cb = cb_setup;
-at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
-ret = at_submit_cb(&at_state, &at_cb_req);
+at_quick_submit( &at_state, AT_CMD_RST, cb_setup, AT_CB_STANDING_TRANSIENT );
 
 /*---------------------------------- 
 Setup callback for HTTP requests
 ---------------------------------- */
-at_cb_req.cmd = AT_CMD_IPD;
-at_cb_req.cb = cb_ipd;
-at_cb_req.standing = AT_CB_STANDING_PERSISTENT;
-ret = at_submit_cb(&at_state, &at_cb_req);
+at_quick_submit( &at_state, AT_CMD_IPD, cb_ipd, AT_CB_STANDING_PERSISTENT );
 
 /*---------------------------------- 
 Send reset cmd to start setup sequence
