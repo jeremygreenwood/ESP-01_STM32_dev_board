@@ -1,3 +1,6 @@
+#ifndef AT_PARSER_H
+#define AT_PARSER_H
+
 /**************************************************
     Includes
 **************************************************/
@@ -127,4 +130,4 @@ char *at_get_cmd_txt(at_cmd_enum cmd);
 **************************************************/
 extern at_cmd_to_text_type *at_cmds;
 
-
+#endif 
