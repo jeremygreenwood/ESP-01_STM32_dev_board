@@ -1,11 +1,3 @@
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <string.h>
-#include <unistd.h>
 #include "at_parser.h"
 #include "http_parser_interface.h"
 #include "uart.h"
@@ -102,19 +94,6 @@ for(;;)
 
 return(ret);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

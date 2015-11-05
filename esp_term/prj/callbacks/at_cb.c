@@ -29,8 +29,6 @@ char resp_http_body[] =
 "<h5>%s\n</h5>"             \
 "</body></html>\n\n";
 
-
-
 /**************************************************
     cb_ipd
 **************************************************/
@@ -53,7 +51,6 @@ int                     i;
 /*---------------------------------- 
 Print
 ---------------------------------- */
-
 dbg_log("Got cb_ipd():: cmd: %d, status: %d, raw_size: %d\n",
         ret->cmd, ret->status, ret->raw_size); 
 i = 0;
@@ -70,10 +67,9 @@ Setup callback, and write cmd out
 switch( ret->cmd )
     {
     case AT_CMD_IPD:
-        at_cb_req.cmd = AT_CMD_CIPSEND;
-        at_cb_req.cb = cb_ipd;
-        at_cb_req.standing = AT_CB_STANDING_TRANSIENT;
-        at_submit_cb(&at_state, &at_cb_req);
+        at_quick_submit( &at_state, AT_CMD_CIPSEND, 
+                          cb_ipd, AT_CB_STANDING_TRANSIENT );
+        
         id = strtol( &ret->raw[5], NULL, 10);
         dbg_log( "Sending HTML to %d\n", id );
 
@@ -94,9 +90,7 @@ This uart write needs to be moved into the next cb.
 How to determine if the cmd for CIPSEND means we just 
 sent what was in the uart and is OK, or we got the send 
 cmd and are ready for you to write it to the uart.
-
-            */
-
+        */
 
         break;
     case AT_CMD_CIPSEND:
