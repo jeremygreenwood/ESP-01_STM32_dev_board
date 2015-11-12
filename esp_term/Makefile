@@ -3,18 +3,27 @@
 CC=gcc
 CFLAGS=-Wall -ggdb
 LDFLAGS=
-INCDIRS=-I. -Iprj -Iprj/callbacks -Iesp-server/http-parser -Iesp-server/at-parser -Iprj/uart
-SOURCES=esp-server/http-parser/http-parser/http_parser.c        \
+INCDIRS=-I. -Iprj -Iprj/callbacks -Iesp-server/http-parser -Iesp-server/at-parser -Iprj/uart -Iesp-server/http-parser/http-parser
+
+#SOURCES=esp-server/http-parser/http-parser/http_parser.c        \
         esp-server/at-parser/at_parser.c                        \
         esp-server/http-parser/http_parser_interface.c          \
         prj/callbacks/at_cb.c									\
         prj/callbacks/key_cb.c									\
         main.c
+SOURCES=./main.c                                            \
+./prj/uart/linux_uart.c                                     \
+./prj/callbacks/key_cb.c                                    \
+./prj/callbacks/at_cb.c                                     \
+./esp-server/html-eng/html-eng.c                            \
+./esp-server/at-parser/at_parser.c                          \
+./esp-server/http-parser/http_parser_interface.c            \
+./esp-server/http-parser/http-parser/http_parser.c          
         
 LINUX_SRC=prj/uart/linux_uart.c
 WIN_SRC=hw-specific/win_uart.c
 
-OBJECTS=$(SOURCES:.c=.o) $(LINUX_SRC:.c=.o)
+OBJECTS=$(SOURCES:.c=.o)
 WIN_OBJECTS=$(WIN_SRC:.c=.o)
 LINUX_OBJECTS=$(LINUX_SRC:.c=.o)
 APP=a.app
@@ -38,4 +47,11 @@ WEB:
 
 clean:
 	@rm -rf $(OBJECTS)
+
+
+SHOW:
+	echo $(OBJECTS)
+
+
+
 
