@@ -30,12 +30,11 @@ char resp_http_ok[] =
 char resp_http_body[] = 
 "<html><body>"                                      \
 "<h1>Hello glorious world!</h1>"                    \
-"<h2>You're id: %d</h2>"                            \
-"<h3>Here's all the raw data:\n</h3>"               \
-"<h5>%s\n</h5>"             \
+"<h2>You're talking to me.</h2>"                            \
+"<h3>that's all \n</h3>"               \
 "</body></html>\n\n";
 
-void send_html(int id, unsigned char *data, int data_len );
+void send_html(int id, char *data, int data_len );
 
 
 /**************************************************
@@ -81,7 +80,9 @@ switch( ret->cmd )
         
         id = strtol( &ret->raw[5], NULL, 10);
         dbg_log( "Sending HTML to %d\n", id );
-
+            
+        send_html( id, resp_http_body, strlen(resp_http_body) );
+/*
         if( strncmp( &ret->raw[11], "GET / HTTP", 6 ) == 0 )
             {
             send_html( id, index_html, index_html_len );
@@ -94,7 +95,7 @@ switch( ret->cmd )
             {
             send_html( id, starter_template_css, starter_template_css_len );
             }
-
+*/
         //sprintf(body_buf, resp_http_body, id, ret->raw);
         //sprintf(hdr_buf, resp_http_ok, strlen(body_buf), body_buf);
         //cont_len = strlen(hdr_buf);
@@ -241,7 +242,7 @@ return(0);
 void send_html
     ( 
     int                 id,
-    unsigned char      *data,
+    char               *data,
     int                 data_len
     )
 {
@@ -268,5 +269,4 @@ uart_write(hdr_buf, strlen(hdr_buf));
 uart_write((char*)data, data_len);
 
 }
-
 
