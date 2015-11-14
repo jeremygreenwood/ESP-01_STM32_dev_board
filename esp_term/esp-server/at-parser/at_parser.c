@@ -125,20 +125,21 @@ int at_process
     int                     in_size
     )
 {
+#define SMALLEST( x, y ) ( x < y ? x : y )
 int             idx;
 int             ret;
+int             jump;
 at_return_type  at_ret;
 int             found;
 at_cmd_enum   token; 
 int             raw_start;
 int             cb_ready;
 
-// dbg_log( "at_process[%d]: --%s--\n", in_size, in );
-
 raw_start = 0;
 idx = 0;
 ret = 0;
 cb_ready = 0;
+memset( &at_ret, 0, sizeof( at_return_type ) );
 do
     {
     found = find_token( _at_cmds, cnt_of_array(_at_cmds), &in[idx], in_size - idx, &token );
@@ -148,92 +149,24 @@ do
         idx += found;
         switch( token )
             {
-            case AT_CMD_no_this_fun:
-                at_ret.status = AT_STATUS_ERR;
-                at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_no_this_fun );
-                at_ret.raw_size = idx - raw_start;
-                cb_ready = 1;
-                break;
+            case AT_CMD_ready:
+            case AT_CMD_ok:
+            case AT_CMD_no_change:
             case AT_CMD_send_ok:
                 at_ret.status = AT_STATUS_OK;
                 at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_send_ok );
+                idx += strlen( at_get_cmd_txt( token ) );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
                 break;
-            case AT_CMD_ready:
-                at_ret.status = AT_STATUS_OK;
-                at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_ready );
-                at_ret.raw_size = idx - raw_start;
-                cb_ready = 1;
-                break;
-            case AT_CMD_ok:
-                at_ret.status = AT_STATUS_OK;
-                at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_ok );
-                at_ret.raw_size = idx - raw_start;
-                cb_ready = 1;
-                if(at_ret.cmd == AT_CMD_RST)
-                    {
-                    cb_ready = 0;
-                    at_ret.raw_size = 0;
-                    }
-                if(at_ret.cmd == AT_CMD_CIPSEND)
-                    {
-                    // idx += atoi(&in[idx + 3]) - 1;
-                    // at_ret.raw_size = idx - raw_start;
-                    // cb_ready = 1;
-                    }
-                break;
+            case AT_CMD_no_this_fun:
             case AT_CMD_error:
+            case AT_CMD_wrong_syntax:
                 at_ret.status = AT_STATUS_ERR;
                 at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_error );
+                idx += strlen( at_get_cmd_txt( token ) );
                 at_ret.raw_size = idx - raw_start;
                 cb_ready = 1;
-                if(at_ret.cmd == AT_CMD_CIPSEND)
-                    {
-                    // idx += atoi(&in[idx + 3]) - 1;
-                    // at_ret.raw_size = idx - raw_start;
-                    // cb_ready = 1;
-                    }
-                break;
-            case AT_CMD_wrong_syntax:
-                break;
-            case AT_CMD_no_change:
-                at_ret.status = AT_STATUS_OK;
-                at_ret.raw = &in[raw_start];
-                idx += strlen( AT_TXT_no_change );
-                at_ret.raw_size = idx - raw_start;
-                at_ret.status = AT_STATUS_OK;
-                cb_ready = 1;
-                break;
-            case AT_CMD_CIPSEND:
-                at_ret.cmd = token;
-                raw_start = idx;
-                idx += strlen( at_get_cmd_txt( token ) );
-                at_ret.status = AT_STATUS_OK;
-                at_ret.raw = &in[raw_start];
-                // idx += 10;
-                // idx += atoi(&in[idx + 3]) - 1;
-                at_ret.raw_size = idx - raw_start;
-                // cb_ready = 1;
-                break;
-            case AT_CMD_IPD:
-                at_ret.cmd = token;
-                raw_start = idx;
-                idx += strlen( at_get_cmd_txt( token ) );
-                at_ret.status = AT_STATUS_OK;
-                at_ret.raw = &in[raw_start];
-
-                // Only do this if it's OK, so wait..
-                idx += 10;
-                idx += atoi(&in[raw_start + 7]) - 1;
-
-                at_ret.raw_size = idx - raw_start;
-                // cb_ready = 1;
                 break;
             default:
                 if( token > AT_CMD_CMDS_START
@@ -242,6 +175,24 @@ do
                     at_ret.cmd = token;
                     raw_start = idx;
                     idx += strlen( at_get_cmd_txt( token ) );
+                    if( token == AT_CMD_RST)
+                        {
+                        // Jump over all the startup data
+                        jump = 300;
+                        idx += SMALLEST( jump, (in_size - idx));
+                        }
+                    if( token == AT_CMD_CIPSEND )
+                        {
+                        // Jump over all the echoed data that was sent
+                        jump = atoi(&in[idx + 3]) - 1;
+                        idx += SMALLEST( jump, (in_size - idx));
+                        }
+                    if( token == AT_CMD_IPD )
+                        {
+                        // Jump over all the incoming data
+                        jump = atoi(&in[idx + 3]) - 1;
+                        idx += SMALLEST( jump, (in_size - idx));
+                        }
                     }
                 else
                     {

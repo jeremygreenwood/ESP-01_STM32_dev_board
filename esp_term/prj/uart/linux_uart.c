@@ -14,9 +14,16 @@
 
 #include "uart.h"
 
+/**************************************************
+    globals
+**************************************************/
+static int fd;
 
-int fd;
-
+#define DBG_UART 1
+#ifdef DBG_UART
+int dbg_fd;
+char dbg_file[] = "dbg_uart.log";
+#endif
 
 /**************************************************
     uart_open
@@ -30,7 +37,6 @@ int uart_open
 struct termios options;
 
 errno = 0;
-// Hard coding for now
 fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK);
 printf("Opened Port: %s, num: %d, errno: %s\n", path, fd, strerror(errno));
 if( fd < 0 )
@@ -38,6 +44,19 @@ if( fd < 0 )
     printf("Problem opening port\n");
     return -1;
     }
+
+
+#ifdef DBG_UART
+errno = 0;
+dbg_fd = open(dbg_file, O_WRONLY | O_CREAT);
+printf("Opening file: %s, num: %d, errno: %s\n", dbg_file, dbg_fd, strerror(errno));
+if( dbg_fd < 0 )
+    {
+    printf("Problem opening dbg file\n");
+    return -1;
+    }
+#endif
+
 
 //setting baud rates and stuff
 tcgetattr(fd, &options); 
@@ -73,6 +92,10 @@ int uart_close
     void
     )
 {
+
+#ifdef DBG_UART
+close(dbg_fd);
+#endif
 return( close(fd) );
 }
 
@@ -85,6 +108,13 @@ int uart_write
     int size
     )
 {
+
+#ifdef DBG_UART
+write(dbg_fd, "\n<OUT>", sizeof("\n<OUT>"));
+write(dbg_fd, buf, size);
+write(dbg_fd, "<OUT\\>", sizeof("<OUT\\>"));
+#endif
+
 return( write( fd, buf, size) );
 }
 
@@ -112,6 +142,11 @@ buf[total] = '\0';
 if(total > 0)
     {
     // printf("uart_read[%d]: ---%s---\n", total, buf);
+    #ifdef DBG_UART
+    write(dbg_fd, "\n<IN>", sizeof("\n<IN>"));
+    write(dbg_fd, buf, total);
+    write(dbg_fd, "<IN\\>", sizeof("<IN\\>"));
+    #endif
     }
 return( total );
 }

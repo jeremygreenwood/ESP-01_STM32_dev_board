@@ -37,11 +37,10 @@ enum
     AT_CMD_CIFSR,
     AT_CMD_CIPMUX,
     AT_CMD_CIPSERVER,
-    /* AT Normal cmds end  */
-    AT_CMD_CMDS_END,
-    /* AT special cmds  */
     AT_CMD_CIPSEND,
     AT_CMD_IPD,
+    /* AT Normal cmds end  */
+    AT_CMD_CMDS_END,
     /* AT Responses  */
     AT_CMD_no_this_fun,
     AT_CMD_ok,
