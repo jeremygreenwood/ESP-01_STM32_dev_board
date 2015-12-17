@@ -15,7 +15,6 @@ RM := rm -rf
 -include system/src/cmsis/subdir.mk
 -include src/subdir.mk
 -include subdir.mk
--include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(strip $(C++_DEPS)),)

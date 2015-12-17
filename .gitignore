@@ -4,6 +4,10 @@
 *.obj
 *.elf
 
+# Other build files
+*.d
+*.map
+
 # Precompiled Headers
 *.gch
 *.pch
